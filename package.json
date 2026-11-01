@@ -1,0 +1,59 @@
+{
+  "name": "founderish",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "worker": "tsx watch worker/index.ts",
+    "worker:build": "esbuild worker/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/worker/index.mjs",
+    "worker:start": "node dist/worker/index.mjs",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "seed": "tsx scripts/seed-demo.ts",
+    "smoke:env": "tsx scripts/smoke/env.ts",
+    "smoke:db": "drizzle-kit push --force && tsx scripts/smoke/db.ts",
+    "smoke:queue": "tsx scripts/smoke/queue.ts",
+    "smoke:llm": "tsx scripts/smoke/llm.ts",
+    "smoke:apollo-search": "tsx scripts/smoke/apollo-search.ts",
+    "smoke:apollo-enrich": "tsx scripts/smoke/apollo-enrich.ts",
+    "smoke:agentboxd-send": "tsx scripts/smoke/agentboxd-send.ts",
+    "smoke:agentboxd-guard": "tsx scripts/smoke/agentboxd-guard.ts",
+    "smoke:agentboxd-receive": "tsx scripts/smoke/agentboxd-receive.ts",
+    "smoke:github": "tsx scripts/smoke/github.ts",
+    "smoke:e2e": "tsx scripts/smoke/e2e.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^2.32.0",
+    "@octokit/rest": "^22.0.1",
+    "agentboxd": "^0.3.0",
+    "dotenv": "^18.0.9",
+    "drizzle-orm": "^0.45.4",
+    "next": "16.4.3",
+    "pg": "^8.23.1",
+    "pg-boss": "^10.4.2",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.11",
+    "esbuild": "^0.28.2",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.3",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.15",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=20.19"
+  }
+}

@@ -1,0 +1,40 @@
+# Render Blueprint (plan.md §8). Secrets marked sync: false are entered in the Render dashboard.
+# The database (founderish, Oregon) is created by hand in the dashboard, not by this Blueprint:
+# set DATABASE_URL to its Internal Database URL on both services. Keep everything in one region.
+services:
+  - type: web
+    name: founderish-web
+    runtime: node
+    region: oregon
+    buildCommand: npm ci && npm run build
+    preDeployCommand: npx drizzle-kit push --force
+    startCommand: npm start
+    envVars: &env
+      - { key: DATABASE_URL, sync: false }
+      - key: NODE_VERSION
+        value: "22"
+      - key: DEMO_MODE
+        value: "true"
+      - key: MAIL_INBOUND_MODE
+        value: webhook
+      - key: AGENTBOXD_BASE_URL
+        value: https://api.agentboxd.com
+      - { key: GEMINI_API_KEY, sync: false }
+      - { key: APOLLO_API_KEY, sync: false }
+      - { key: AGENTBOXD_API_KEY, sync: false }
+      - { key: AGENTBOXD_INBOX, sync: false }
+      - { key: AGENTBOXD_WEBHOOK_SECRET, sync: false }
+      - { key: GITHUB_TOKEN, sync: false }
+      - { key: GITHUB_WEBHOOK_SECRET, sync: false }
+      - { key: TEST_REPO, sync: false }
+      - { key: APP_URL, sync: false }
+      - { key: OWNER_EMAIL, sync: false }
+      - { key: SEND_ALLOWLIST, sync: false }
+
+  - type: worker
+    name: founderish-worker
+    runtime: node
+    region: oregon
+    buildCommand: npm ci && npm run worker:build
+    startCommand: npm run worker:start
+    envVars: *env
