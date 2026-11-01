@@ -49,13 +49,14 @@ export async function send(input: {
   to: string;
   subject: string;
   text: string;
+  html?: string;
   replyToMessageId?: string;
 }): Promise<{ messageId: string; threadId: string }> {
   assertSendAllowed(input.to);
   const { id: inboxId } = await getCoachInbox();
   const msg = input.replyToMessageId
-    ? await mr().messages.reply(inboxId, input.replyToMessageId, { text: input.text })
-    : await mr().messages.send(inboxId, { to: input.to, subject: input.subject, text: input.text });
+    ? await mr().messages.reply(inboxId, input.replyToMessageId, { text: input.text, html: input.html })
+    : await mr().messages.send(inboxId, { to: input.to, subject: input.subject, text: input.text, html: input.html });
   return { messageId: msg.id, threadId: msg.thread_id };
 }
 

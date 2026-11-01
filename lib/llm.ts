@@ -75,6 +75,10 @@ export async function callJSON<S extends z.ZodType>(opts: {
         },
       });
     } catch (err) {
+      // 402: the key's project is on prepaid billing with no credit left. Retrying can't help.
+      if (err instanceof ApiError && err.status === 402) {
+        throw new LLMError("Gemini key's project has prepaid billing with no credit. Add credit in AI Studio or use a free-tier project's key.");
+      }
       if (err instanceof ApiError && (err.status === 429 || err.status >= 500)) {
         const wait = err.status === 429 ? retryDelayMs(err) : 3000;
         if (wait > 90_000) {

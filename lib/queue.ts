@@ -1,6 +1,6 @@
 // pg-boss client + job contract (plan.md §5). Job names are shared across the team; don't rename them.
 import PgBoss from "pg-boss";
-import { db, schema } from "./db";
+import { db, schema, POOL_SAFETY } from "./db";
 import { databaseUrl } from "./env";
 
 export const JOBS = {
@@ -43,7 +43,8 @@ const g = globalThis as unknown as { __founderishBoss?: Promise<PgBoss> };
 
 export function getBoss(): Promise<PgBoss> {
   g.__founderishBoss ??= (async () => {
-    const boss = new PgBoss(databaseUrl());
+    // pg-boss passes its config straight to pg.Pool, so the same half-open-socket protection applies.
+    const boss = new PgBoss({ connectionString: databaseUrl(), ...POOL_SAFETY } as PgBoss.ConstructorOptions);
     boss.on("error", (err) => console.error("[pg-boss]", err));
     await boss.start();
     // pg-boss v10 needs a queue to exist before send/work.

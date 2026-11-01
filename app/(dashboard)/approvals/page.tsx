@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { currentProject } from "@/lib/dashboard";
 import { DraftCard } from "./draft-card";
@@ -30,7 +30,7 @@ async function Queue({ searchParams }: PageProps<"/approvals">) {
     .from(schema.drafts)
     .leftJoin(schema.contacts, eq(schema.drafts.contactId, schema.contacts.id))
     .leftJoin(schema.audiences, eq(schema.contacts.audienceId, schema.audiences.id))
-    .where(eq(schema.drafts.projectId, project.id))
+    .where(and(eq(schema.drafts.projectId, project.id), ne(schema.drafts.kind, "post"))) // posts live on /posts
     .orderBy(desc(schema.drafts.createdAt));
 
   const factIds = [...new Set(rows.flatMap((r) => r.draft.factIds))];

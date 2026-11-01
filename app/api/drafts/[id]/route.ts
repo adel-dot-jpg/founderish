@@ -6,6 +6,7 @@ import { enqueue, recordEvent, JOBS } from "@/lib/queue";
 const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("approve") }),
   z.object({ action: z.literal("reject") }),
+  z.object({ action: z.literal("posted") }), // owner published an approved post/note on LinkedIn themselves
   z.object({ action: z.literal("edit"), subject: z.string().optional(), body: z.string().min(1) }),
 ]);
 
@@ -26,6 +27,13 @@ export async function PATCH(req: Request, ctx: RouteContext<"/api/drafts/[id]">)
       .where(eq(schema.drafts.id, id))
       .returning();
     await enqueue(JOBS.receiptCheck, { draftId: id });
+    return Response.json(updated);
+  }
+
+  if (input.action === "posted") {
+    if (draft.status !== "approved") return Response.json({ error: `draft is ${draft.status}, not approved` }, { status: 409 });
+    const [updated] = await db.update(schema.drafts).set({ status: "sent" }).where(eq(schema.drafts.id, id)).returning();
+    await recordEvent(draft.projectId, "post_published", { draftId: id });
     return Response.json(updated);
   }
 

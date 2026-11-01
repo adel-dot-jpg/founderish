@@ -46,3 +46,25 @@ Rules:
 - End with the sign-off "${signature()}" on its own line.`,
   });
 }
+
+const FollowupOutput = z.object({
+  body: z.string(),
+  facts_used: z.array(z.string()),
+});
+
+// followup.schedule: a short bump on an unanswered email, leading with the newest receipt if there is one.
+export function draftFollowup(input: { factsText: string; newestFact: string | null; contactName: string; original: string }) {
+  return callJSON({
+    schema: FollowupOutput,
+    system: FOUNDER_VOICE,
+    prompt: `FACTS:
+${input.factsText}
+
+I emailed ${input.contactName} a few days ago and got no reply:
+<<<
+${input.original}
+>>>
+
+Write a follow-up under 60 words. Open with "Hi ${input.contactName.split(" ")[0]}," then ${input.newestFact ? `lead with this newest fact as the reason to write again: "${input.newestFact}"` : "add one fact from FACTS that wasn't in the first email"}. Restate the same single ask in one line. No guilt-tripping ("just bumping", "circling back"). Keep any link from the original exactly as it was. End with "${signature()}".`,
+  });
+}

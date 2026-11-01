@@ -31,7 +31,7 @@ export function WaitlistForm({ slug, token }: { slug: string; token?: string }) 
       />
       <button
         disabled={state === "sending"}
-        className="rounded-md bg-black px-4 py-2 font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+        className="rounded-md bg-brand px-4 py-2 font-medium text-black hover:brightness-110 disabled:opacity-50"
       >
         Join the waitlist
       </button>

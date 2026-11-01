@@ -106,7 +106,7 @@ export function DraftCard({ draft, contact, audience, facts }: Props) {
         <footer className="mt-4 flex flex-wrap gap-2">
           {editing ? (
             <>
-              <button disabled={busy} onClick={() => act({ action: "edit", body })} className="rounded-md bg-black px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black">
+              <button disabled={busy} onClick={() => act({ action: "edit", body })} className="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-black hover:brightness-110 disabled:opacity-50">
                 Save and re-check receipts
               </button>
               <button disabled={busy} onClick={() => (setEditing(false), setBody(draft.body))} className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700">
@@ -116,7 +116,7 @@ export function DraftCard({ draft, contact, audience, facts }: Props) {
           ) : (
             <>
               {draft.status === "pending" && (
-                <button disabled={busy} onClick={() => act({ action: "approve" })} className="rounded-md bg-black px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black">
+                <button disabled={busy} onClick={() => act({ action: "approve" })} className="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-black hover:brightness-110 disabled:opacity-50">
                   Approve &amp; send
                 </button>
               )}

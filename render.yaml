@@ -30,6 +30,9 @@ services:
       - { key: APP_URL, sync: false }
       - { key: OWNER_EMAIL, sync: false }
       - { key: SEND_ALLOWLIST, sync: false }
+      - { key: OWNER_NAME, sync: false }
+      - key: LLM_USE_RESERVE
+        value: "1"
 
   - type: worker
     name: founderish-worker

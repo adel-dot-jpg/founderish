@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { recordEvent, type JobPayloads } from "@/lib/queue";
+import { enqueue, recordEvent, JOBS, type JobPayloads } from "@/lib/queue";
 import { send, SendBlockedError } from "@/lib/mail";
 
 // Approved draft -> Agentboxd. Replies and follow-ups go into the contact's existing thread.
@@ -43,6 +43,10 @@ export default async function handle({ draftId }: JobPayloads["outreach.send"]) 
       await db.update(schema.contacts).set({ status: "sent" }).where(eq(schema.contacts.id, contact.id));
     }
     await recordEvent(draft.projectId, "email_sent", { draftId, contactId: contact.id, to: contact.email, threadId: sent.threadId });
+    if (draft.kind === "email") {
+      const minutes = Number(process.env.FOLLOWUP_AFTER_MINUTES ?? 4 * 24 * 60);
+      await enqueue(JOBS.followupSchedule, { contactId: contact.id }, { startAfter: Math.round(minutes * 60) });
+    }
   } catch (err) {
     // The DEMO_MODE guard is final: record it instead of letting pg-boss retry.
     if (err instanceof SendBlockedError) {

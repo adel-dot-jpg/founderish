@@ -1,8 +1,9 @@
-import { and, asc, desc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNotNull } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { recordEvent, type JobPayloads } from "@/lib/queue";
 import { appUrl, ownerEmail } from "@/lib/env";
 import { send } from "@/lib/mail";
+import { nicheSnapshot } from "@/lib/niche";
 
 // Numbered list of pending drafts + replies since the last brief + a per-audience scoreboard, emailed to the owner
 // from the coach inbox. The owner approves by replying "send 1 3" (handled in mail.inbound). No LLM calls.
@@ -43,79 +44,59 @@ export default async function handle({ projectId }: JobPayloads["brief.send"]) {
     );
 
   const niche = await nicheSnapshot(project.id);
+  const leader = niche.find((n) => n.score > 0);
 
-  const lines = [
-    `Your founder(ish) brief for ${project.name}`,
+  const items = pending.map(({ draft, contact }, i) => ({
+    n: i + 1,
+    who: `${shortName(contact?.name)}${contact?.company ? ` · ${contact.company}` : ""}`,
+    lane: draft.kind === "reply" ? "reply" : contact?.direction === "up" ? "network" : "users",
+  }));
+  const replyLines = replies.slice(0, 3).map((r) => `${shortName(r.payload.name as string)} (${r.payload.classification}): ${r.payload.summary}`);
+  const url = `${appUrl()}/approvals`;
+  const headline = pending.length ? `${pending.length} draft${pending.length === 1 ? "" : "s"} need your OK` : "Nothing needs you right now";
+
+  const text = [
+    `${headline}${replies.length ? ` · ${replies.length} new repl${replies.length === 1 ? "y" : "ies"}` : ""}`,
     "",
-    pending.length
-      ? `${pending.length} draft${pending.length === 1 ? "" : "s"} waiting for your OK. Reply "send 1 3" to approve or "skip 2" to drop.`
-      : "Nothing waiting for approval.",
+    ...items.map((i) => `${i.n}  ${i.who} (${i.lane})`),
+    ...(items.length ? ["", `Reply "send 1 3" to approve or "skip 2" to drop.`] : []),
+    ...(replyLines.length ? ["", ...replyLines] : []),
+    ...(leader ? ["", `Leading niche: ${leader.name}`] : []),
     "",
-    ...pending.flatMap(({ draft, contact }, i) => [
-      `${i + 1}. ${contact?.direction === "up" ? "[Network]" : "[Users]"} ${contact?.name ?? "?"}${contact?.title ? `, ${contact.title}` : ""}${contact?.company ? ` @ ${contact.company}` : ""}`,
-      `   "${draft.subject ?? draft.kind}": ${draft.body.split("\n").find((l) => l.trim() && !/^hi\b/i.test(l.trim()))?.trim().slice(0, 140) ?? ""}`,
-    ]),
-    "",
-    replies.length ? "Replies since the last brief:" : "No new replies since the last brief.",
-    ...replies.map((r) => `- ${r.payload.name} (${r.payload.classification}): ${r.payload.summary}`),
-    "",
-    "Which audience is responding:",
-    ...niche.map((n) => `- ${n.name}: ${n.sent} sent, ${n.replies} replies, ${n.clicks} clicks, ${n.signups} signups`),
-    "",
-    `Review everything: ${appUrl()}/approvals`,
-  ];
+    `Full drafts and receipts: ${url}`,
+  ].join("\n");
 
   const sent = await send({
     to: ownerEmail(),
-    subject: `founder(ish) brief: ${pending.length} to approve`,
-    text: lines.join("\n"),
+    subject: `founder(ish): ${headline.toLowerCase()}`,
+    text,
+    html: briefHtml({ project: project.name, headline, items, replyLines, leader: leader?.name ?? null, url }),
   });
   await recordEvent(project.id, "brief_sent", { threadId: sent.threadId, numbered: pending.length, replies: replies.length });
 }
 
-// Per user audience: outcomes so far. Shared with the niche view.
-export async function nicheSnapshot(projectId: string) {
-  const audiences = await db
-    .select()
-    .from(schema.audiences)
-    .where(and(eq(schema.audiences.projectId, projectId), eq(schema.audiences.direction, "down")));
-  if (!audiences.length) return [];
-  const ids = audiences.map((a) => a.id);
+// "Jani Vr***k" -> "Jani V." (Apollo search obfuscates last names anyway)
+function shortName(name?: string | null) {
+  const [first, last] = (name ?? "?").split(" ");
+  return last ? `${first} ${last[0]}.` : first;
+}
 
-  const contactStats = await db
-    .select({
-      audienceId: schema.contacts.audienceId,
-      sent: sql<number>`count(*) filter (where ${schema.contacts.status} in ('sent','replied','meeting','dead'))`.mapWith(Number),
-      replies: sql<number>`count(*) filter (where ${schema.contacts.status} in ('replied','meeting'))`.mapWith(Number),
-    })
-    .from(schema.contacts)
-    .where(inArray(schema.contacts.audienceId, ids))
-    .groupBy(schema.contacts.audienceId);
+const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-  const clicks = await db
-    .select({ audienceId: schema.contacts.audienceId, n: sql<number>`count(*)`.mapWith(Number) })
-    .from(schema.events)
-    .innerJoin(schema.contacts, sql`${schema.contacts.id}::text = ${schema.events.payload}->>'contactId'`)
-    .where(and(eq(schema.events.type, "link_click"), inArray(schema.contacts.audienceId, ids)))
-    .groupBy(schema.contacts.audienceId);
-
-  const signups = await db
-    .select({ audienceId: schema.contacts.audienceId, n: sql<number>`count(*)`.mapWith(Number) })
-    .from(schema.signups)
-    .innerJoin(schema.links, eq(schema.signups.linkToken, schema.links.token))
-    .innerJoin(schema.contacts, eq(schema.links.contactId, schema.contacts.id))
-    .where(inArray(schema.contacts.audienceId, ids))
-    .groupBy(schema.contacts.audienceId);
-
-  return audiences
-    .map((a) => {
-      const s = contactStats.find((x) => x.audienceId === a.id);
-      const sent = s?.sent ?? 0;
-      const replies = s?.replies ?? 0;
-      const c = clicks.find((x) => x.audienceId === a.id)?.n ?? 0;
-      const g = signups.find((x) => x.audienceId === a.id)?.n ?? 0;
-      // plan.md §6: (positive_replies*3 + signups*2 + clicks) / sent
-      return { id: a.id, name: a.name, status: a.status, sent, replies, clicks: c, signups: g, score: sent ? (replies * 3 + g * 2 + c) / sent : 0 };
-    })
-    .sort((x, y) => y.score - x.score);
+// Email-client-safe HTML: tables + inline styles, no images (they'd need a public URL).
+function briefHtml(b: { project: string; headline: string; items: { n: number; who: string; lane: string }[]; replyLines: string[]; leader: string | null; url: string }) {
+  const row = (cells: string) => `<tr>${cells}</tr>`;
+  return `<!doctype html><html><body style="margin:0;background:#0d0d0d;padding:24px 12px;font-family:-apple-system,Segoe UI,Arial,sans-serif;color:#ededed">
+<table role="presentation" width="100%" style="max-width:520px;margin:0 auto;background:#161616;border:1px solid #2a2a2a;border-radius:10px">
+<tr><td style="padding:20px 24px 4px;font-family:Menlo,Consolas,monospace;font-weight:700;font-size:15px;letter-spacing:1px">FOUNDER<span style="background:#ff7f00;color:#000;border-radius:4px;padding:1px 4px;margin-left:2px">(ISH)</span></td></tr>
+<tr><td style="padding:12px 24px 0;font-size:22px;font-weight:700">${esc(b.headline)}</td></tr>
+<tr><td style="padding:2px 24px 14px;font-size:13px;color:#a1a1aa">${esc(b.project)}</td></tr>
+${b.items.length ? `<tr><td style="padding:0 24px"><table role="presentation" width="100%" style="border-collapse:collapse;font-size:14px">
+${b.items.map((i) => row(`<td style="padding:6px 0;width:28px;font-family:Menlo,Consolas,monospace;color:#ff7f00;font-weight:700">${i.n}</td><td style="padding:6px 0">${esc(i.who)}</td><td style="padding:6px 0;text-align:right;color:#a1a1aa;font-size:12px">${i.lane}</td>`)).join("")}
+</table></td></tr>
+<tr><td style="padding:10px 24px 0;font-size:13px;color:#a1a1aa">Reply <b style="color:#ededed">send 1 3</b> to approve or <b style="color:#ededed">skip 2</b> to drop.</td></tr>` : ""}
+${b.replyLines.length ? `<tr><td style="padding:16px 24px 0;font-size:13px"><div style="color:#a1a1aa;margin-bottom:4px">New replies</div>${b.replyLines.map((l) => `<div style="padding:2px 0">${esc(l)}</div>`).join("")}</td></tr>` : ""}
+${b.leader ? `<tr><td style="padding:16px 24px 0;font-size:13px;color:#a1a1aa">Leading niche: <span style="color:#ededed">${esc(b.leader)}</span></td></tr>` : ""}
+<tr><td style="padding:20px 24px 24px"><a href="${b.url}" style="display:inline-block;background:#ff7f00;color:#000;text-decoration:none;font-weight:600;padding:10px 16px;border-radius:6px;font-size:14px">Review drafts and receipts</a></td></tr>
+</table></body></html>`;
 }
