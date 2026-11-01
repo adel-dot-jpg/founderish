@@ -11,6 +11,9 @@ export default function ApprovalsPage(props: PageProps<"/approvals">) {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Approvals</h1>
         <p className="text-sm text-zinc-500">Nothing goes out until you approve it. Every claim is backed by a receipt.</p>
+        <p className="mt-1 text-sm text-zinc-400">
+          Approved emails go out from the coach inbox <span className="font-mono text-brand">{process.env.AGENTBOXD_INBOX ?? "on Agentboxd"}</span> (Agentboxd). Replies land there, get classified, and come back here as reply drafts.
+        </p>
       </div>
       <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
         <Queue {...props} />
