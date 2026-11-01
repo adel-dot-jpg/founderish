@@ -45,7 +45,13 @@ async function Dashboard({ searchParams }: PageProps<"/">) {
     db.select({ id: schema.projects.id, name: schema.projects.name }).from(schema.projects).orderBy(desc(schema.projects.createdAt)),
     trafficStats(project.id, 7),
     db.select().from(schema.facts).where(eq(schema.facts.projectId, project.id)).orderBy(desc(schema.facts.createdAt)),
-    db.select().from(schema.events).where(and(eq(schema.events.projectId, project.id), sql`${schema.events.type} <> 'traffic'`)).orderBy(desc(schema.events.createdAt)).limit(25),
+    // Never pull file payloads (resume PDFs) into the feed.
+    db
+      .select({ id: schema.events.id, type: schema.events.type, createdAt: schema.events.createdAt, payload: sql<Record<string, unknown>>`${schema.events.payload} - 'pdfBase64'` })
+      .from(schema.events)
+      .where(and(eq(schema.events.projectId, project.id), sql`${schema.events.type} <> 'traffic'`))
+      .orderBy(desc(schema.events.createdAt))
+      .limit(25),
     db
       .select({
         sent: sql<number>`count(*) filter (where ${schema.contacts.status} in ('sent','replied','meeting','dead'))`.mapWith(Number),
@@ -157,13 +163,14 @@ function Snippet({ code }: { code: string }) {
   );
 }
 
-function describe(e: typeof schema.events.$inferSelect): string {
+function describe(e: { type: string; payload: Record<string, unknown> }): string {
   const p = e.payload as Record<string, unknown>;
   switch (e.type) {
     case "project_created": return "Project created";
     case "project_ingested": return `Read the repo: ${p.facts} receipts found`;
     case "audiences_generated": return `Picked ${(p.audiences as string[])?.length ?? 0} audiences to test`;
-    case "people_found": return `Found ${p.found} people for “${p.audience}”`;
+    case "people_found": return `Found ${p.found} people for “${p.audience}” (${p.new} new)`;
+    case "people_search_requested": return "Searching Apollo for more people";
     case "people_ranked": return `Ranked ${p.ranked} people for “${p.audience}”`;
     case "receipt_passed": return `Draft passed the receipt check${p.rewritten ? " after a rewrite" : ""}`;
     case "receipt_flagged": return "Draft flagged: unsupported claim";

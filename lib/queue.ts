@@ -27,7 +27,7 @@ export type JobPayloads = {
   "ping": { marker: string };
   "project.ingest": { projectId: string };
   "audiences.generate": { projectId: string; hint?: string };
-  "people.find": { projectId?: string; audienceId?: string }; // no ids = every testing audience (daily run)
+  "people.find": { projectId?: string; audienceId?: string; more?: boolean }; // no ids = every testing audience (daily run); more = next Apollo page
   "people.rank": { projectId: string; contactIds: string[] };
   "outreach.draft": { projectId: string; contactId: string };
   "receipt.check": { draftId: string };

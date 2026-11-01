@@ -1,11 +1,11 @@
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { enqueue, recordEvent, JOBS, type JobPayloads } from "@/lib/queue";
 import { searchPeople, type ApolloPerson } from "@/lib/apollo";
 
 // Apollo search (free) for one audience -> dedupe on (project, apollo_id) -> people.rank.
 // With no audienceId (the daily schedule), fans out to every audience that isn't dropped.
-export default async function handle({ projectId, audienceId }: JobPayloads["people.find"]) {
+export default async function handle({ projectId, audienceId, more }: JobPayloads["people.find"]) {
   if (!audienceId) {
     const audiences = await db
       .select()
@@ -17,7 +17,9 @@ export default async function handle({ projectId, audienceId }: JobPayloads["peo
 
   const [audience] = await db.select().from(schema.audiences).where(eq(schema.audiences.id, audienceId));
   if (!audience) return;
-  const filters = audience.apolloFilters;
+  // "Find more" asks Apollo for the next page instead of the same top results.
+  const [{ n: known }] = await db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(schema.contacts).where(eq(schema.contacts.audienceId, audience.id));
+  const filters = { ...audience.apolloFilters, page: more ? Math.floor(known / (audience.apolloFilters.per_page ?? 10)) + 1 : 1 };
 
   let people: ApolloPerson[] = await searchPeople(filters);
   // Keyword filters often over-narrow; widen once if the search came back thin.

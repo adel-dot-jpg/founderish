@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { recordEvent, type JobPayloads } from "@/lib/queue";
 import { extractSourceFacts } from "@/lib/prompts/sourceFacts";
@@ -36,6 +36,10 @@ export default async function handle({ eventId }: JobPayloads["source.ingest"]) 
         sourceUrl: src.url ?? src.filename ?? null,
       })),
     );
+  }
+  // The PDF only needed to live in the event until it was read; drop it so the activity feed stays light.
+  if (src.pdfBase64) {
+    await db.update(schema.events).set({ payload: sql`${schema.events.payload} - 'pdfBase64'` }).where(eq(schema.events.id, eventId));
   }
   await recordEvent(project.id, "source_ingested", { kind: src.kind, label, facts: facts.length });
 }
