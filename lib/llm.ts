@@ -51,6 +51,7 @@ export async function callJSON<S extends z.ZodType>(opts: {
   system?: string;
   maxTokens?: number;
   model?: keyof typeof CHAINS;
+  files?: { mimeType: string; data: string }[]; // base64, e.g. a resume PDF
 }): Promise<z.infer<S>> {
   const models = CHAINS[opts.model ?? "smart"];
   let lastError = "";
@@ -65,7 +66,9 @@ export async function callJSON<S extends z.ZodType>(opts: {
     try {
       response = await gemini().models.generateContent({
         model,
-        contents: opts.prompt,
+        contents: opts.files?.length
+          ? [{ role: "user", parts: [...opts.files.map((f) => ({ inlineData: f })), { text: opts.prompt }] }]
+          : opts.prompt,
         config: {
           httpOptions: { timeout: 60_000 }, // a hung request must not stall the job
           systemInstruction: opts.system,

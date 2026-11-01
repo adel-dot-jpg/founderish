@@ -16,6 +16,9 @@ export default function DashboardLayout({ children }: LayoutProps<"/">) {
           <Link href="/" aria-label="founder(ish) home">
             <Image src="/logotransparent.png" alt="founder(ish)" width={148} height={40} priority className="h-8 w-auto" />
           </Link>
+          <Link href="/new" className="order-last ml-auto rounded-md border border-zinc-700 px-2.5 py-1 text-xs text-zinc-300 hover:border-zinc-500">
+            + New project
+          </Link>
           {NAV.map((n) => (
             <Link key={n.href} href={n.href} className="text-sm text-zinc-400 hover:text-white">
               {n.label}

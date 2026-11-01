@@ -14,9 +14,10 @@ export default async function handle({ draftId }: JobPayloads["receipt.check"]) 
   let unsupported: string[] = [];
   for (let pass = 0; pass < 2; pass++) {
     const check = await checkReceipts({ subject: draft.subject, body, factsText: table.text });
-    unsupported = check.claims.filter((c) => !c.fact).map((c) => c.claim);
+    // Only statements of fact need a receipt; problem framing and the ask don't. Framing that cites numbers is a fact.
+    unsupported = check.claims.filter((c) => !c.fact && (c.kind === "fact" || /\d/.test(c.claim))).map((c) => c.claim);
     if (!unsupported.length) {
-      const factIds = [...new Set([...table.resolve(check.claims.map((c) => c.fact!)), ...draft.factIds])];
+      const factIds = [...new Set([...table.resolve(check.claims.flatMap((c) => (c.fact ? [c.fact] : []))), ...draft.factIds])];
       await db.update(schema.drafts).set({ body, factIds, status: "pending" }).where(eq(schema.drafts.id, draftId));
       await recordEvent(draft.projectId, "receipt_passed", { draftId, rewritten: pass > 0, claims: check.claims.length });
       return;

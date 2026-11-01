@@ -13,6 +13,7 @@ import postDraft from "./post-draft";
 import nicheReport from "./niche-report";
 import briefSend from "./brief-send";
 import factsRefresh from "./facts-refresh";
+import sourceIngest from "./source-ingest";
 
 export const handlers: { [N in JobName]: (data: JobPayloads[N]) => Promise<void> } = {
   "ping": ping,
@@ -29,4 +30,5 @@ export const handlers: { [N in JobName]: (data: JobPayloads[N]) => Promise<void>
   "niche.report": nicheReport,
   "brief.send": briefSend,
   "facts.refresh": factsRefresh,
+  "source.ingest": sourceIngest,
 };

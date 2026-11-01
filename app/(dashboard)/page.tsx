@@ -7,6 +7,7 @@ import { currentProject } from "@/lib/dashboard";
 import { trafficStats } from "@/lib/traffic";
 import { CopyButton } from "./copy-button";
 import { AddFactForm } from "./add-fact-form";
+import { SourceForm } from "./source-form";
 
 export default function Overview(props: PageProps<"/">) {
   return (
@@ -26,12 +27,18 @@ const SOURCE_LABEL: Record<string, string> = {
   reply: "reply",
   manual: "you",
   traffic: "live traffic",
+  website: "website",
+  resume: "resume",
 };
 
 async function Dashboard({ searchParams }: PageProps<"/">) {
   const project = await currentProject((await searchParams).project);
   if (!project) {
-    return <p className="text-zinc-400">No project yet. Create one with POST /api/projects.</p>;
+    return (
+      <p className="text-zinc-400">
+        No project yet. <Link href="/new" className="text-brand underline">Link a repo to start</Link>.
+      </p>
+    );
   }
 
   const [projects, traffic, facts, events, outreach] = await Promise.all([
@@ -104,6 +111,7 @@ async function Dashboard({ searchParams }: PageProps<"/">) {
           <h2 className="font-medium">
             Receipts <span className="text-sm font-normal text-zinc-500">· the only claims founder(ish) will make</span>
           </h2>
+          <SourceForm projectId={project.id} />
           <AddFactForm projectId={project.id} />
           <ul className="flex flex-col gap-1.5 text-sm">
             {facts.map((f) => (
@@ -169,6 +177,10 @@ function describe(e: typeof schema.events.$inferSelect): string {
     case "brief_sent": return `Brief emailed (${p.numbered} to approve)`;
     case "facts_refreshed": return `Live numbers updated: ${p.visitors} visitors, ${p.signups} signups`;
     case "fact_added": return `Receipt added: ${p.text}`;
+    case "source_added": return `Reading ${p.url ?? p.filename ?? "pasted text"}`;
+    case "source_ingested": return `Learned ${p.facts} receipts from ${p.label}`;
+    case "post_requested": return "Post requested";
+    case "brief_requested": return "Brief requested";
     case "post_drafted": return "LinkedIn post drafted";
     case "post_published": return "LinkedIn post published";
     case "followup_drafted": return `Follow-up drafted for ${p.name}`;

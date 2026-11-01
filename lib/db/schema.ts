@@ -11,7 +11,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-export const factSource = pgEnum("fact_source", ["repo", "readme", "commit", "signup", "reply", "manual", "traffic"]);
+export const factSource = pgEnum("fact_source", ["repo", "readme", "commit", "signup", "reply", "manual", "traffic", "website", "resume"]);
 export const direction = pgEnum("direction", ["up", "down"]);
 export const audienceStatus = pgEnum("audience_status", ["testing", "winner", "dropped"]);
 export const contactStatus = pgEnum("contact_status", ["found", "drafted", "sent", "replied", "meeting", "dead"]);
