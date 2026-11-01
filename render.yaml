@@ -5,6 +5,7 @@ services:
   - type: web
     name: founderish-web
     runtime: node
+    plan: starter
     region: oregon
     buildCommand: npm ci && npm run build
     preDeployCommand: npx drizzle-kit push --force
@@ -15,8 +16,8 @@ services:
         value: "22"
       - key: DEMO_MODE
         value: "true"
-      - key: MAIL_INBOUND_MODE
-        value: webhook
+      - key: MAIL_INBOUND_MODE # worker polls the coach inbox every 30s; no webhook registration needed
+        value: poll
       - key: AGENTBOXD_BASE_URL
         value: https://api.agentboxd.com
       - { key: GEMINI_API_KEY, sync: false }
@@ -31,12 +32,13 @@ services:
       - { key: OWNER_EMAIL, sync: false }
       - { key: SEND_ALLOWLIST, sync: false }
       - { key: OWNER_NAME, sync: false }
-      - key: LLM_USE_RESERVE
-        value: "1"
+      - key: LLM_USE_RESERVE # flip to "1" right before the demo
+        value: "0"
 
   - type: worker
     name: founderish-worker
     runtime: node
+    plan: starter
     region: oregon
     buildCommand: npm ci && npm run worker:build
     startCommand: npm run worker:start
