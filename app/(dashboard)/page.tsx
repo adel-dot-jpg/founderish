@@ -78,6 +78,7 @@ async function Dashboard({ searchParams }: PageProps<"/">) {
           {project.siteUrl && <a href={project.siteUrl} className="hover:text-white">{project.siteUrl.replace(/^https?:\/\//, "")}</a>}
           <a href={project.repoUrl} className="hover:text-white">{project.repoUrl.replace("https://github.com/", "github/")}</a>
           <Link href={`/p/${project.slug}`} className="hover:text-white">landing page</Link>
+          <ActionButton url={`/api/projects/${project.id}/find`} label="Find people now" busyLabel="Searching Apollo…" refreshAfterMs={30000} />
           <ActionButton url={`/api/projects/${project.id}/ingest`} label="Re-read repo" busyLabel="Reading the repo…" refreshAfterMs={30000} />
         </p>
       </section>
@@ -162,7 +163,7 @@ function describe(e: { type: string; payload: Record<string, unknown> }): string
     case "project_ingested": return `Read the repo: ${p.facts} receipts found`;
     case "audiences_generated": return `Picked ${(p.audiences as string[])?.length ?? 0} audiences to test`;
     case "people_found": return `Found ${p.found} people for “${p.audience}” (${p.new} new)`;
-    case "people_search_requested": return "Searching Apollo for more people";
+    case "people_search_requested": return p.audiences === 0 ? "Picking audiences from the receipts, then searching Apollo" : "Searching Apollo for more people";
     case "people_ranked": return `Ranked ${p.ranked} people for “${p.audience}”`;
     case "receipt_passed": return `Draft passed the receipt check${p.rewritten ? " after a rewrite" : ""}`;
     case "receipt_flagged": return "Draft flagged: unsupported claim";

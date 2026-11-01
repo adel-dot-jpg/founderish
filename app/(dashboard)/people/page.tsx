@@ -4,6 +4,7 @@ import { db, schema } from "@/lib/db";
 import { currentProject } from "@/lib/dashboard";
 import { isDemoMode } from "@/lib/env";
 import { FindMoreButton } from "./find-more-button";
+import { ActionButton } from "../action-button";
 
 export default function PeoplePage(props: PageProps<"/people">) {
   return (
@@ -41,6 +42,9 @@ async function People({ searchParams }: PageProps<"/people">) {
 
   return (
     <>
+      <div>
+        <ActionButton url={`/api/projects/${project.id}/find`} label="Find people now" busyLabel="Searching Apollo… (about 30s)" refreshAfterMs={30000} />
+      </div>
       {isDemoMode() && (
         <p className="rounded-md border border-amber-800 bg-amber-950/40 px-3 py-2 text-sm text-amber-200">
           DEMO_MODE is on: people and titles are real Apollo results, but emails are swapped for your SEND_ALLOWLIST so nobody real is contacted and no Apollo credits are spent.
