@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   } catch {}
 
   await recordEvent(projectId, "traffic", { kind: b.type, path: b.path ?? "/", referrer, visitor: b.visitor, props: b.props ?? {} });
-  // A signup on the founder's own app is new traction: refresh the facts (debounced to once a minute).
-  if (b.type === "signup") await enqueue(JOBS.factsRefresh, { projectId }, { singletonKey: `facts-${projectId}`, singletonSeconds: 60 });
+  // New traffic or a signup is new traction: refresh the "N visitors / N signups" receipts, at most once a minute.
+  await enqueue(JOBS.factsRefresh, { projectId }, { singletonKey: `facts-${projectId}`, singletonSeconds: 60 });
   return new Response(null, { status: 204, headers: CORS });
 }
