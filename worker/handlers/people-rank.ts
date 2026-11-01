@@ -6,7 +6,7 @@ import { rankContacts } from "@/lib/prompts/rank";
 import { loadProject } from "./_context";
 
 // How many of the best contacts per audience get enriched and drafted. Kept low: every draft costs two LLM calls.
-const TOP_N = { down: Number(process.env.TOP_N_DOWN ?? 2), up: Number(process.env.TOP_N_UP ?? 1) };
+const TOP_N = { down: Number(process.env.TOP_N_DOWN ?? 1), up: Number(process.env.TOP_N_UP ?? 1) };
 const MIN_SCORE = 40;
 
 // LLM scores new contacts 0-100 with a one-line reason -> enrich the top picks -> outreach.draft.

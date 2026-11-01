@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
-import { recordEvent } from "@/lib/queue";
+import { enqueue, recordEvent, JOBS } from "@/lib/queue";
 
 const Body = z.object({ slug: z.string(), email: z.email(), token: z.string().optional() });
 
@@ -21,8 +21,8 @@ export async function POST(req: Request) {
     .returning();
 
   if (signup) {
-    // TODO(D/A): turn signups into a "N people on the waitlist" fact (+ post.draft on milestones).
     await recordEvent(project.id, "signup", { signupId: signup.id, linkToken: link?.token ?? null, contactId: link?.contactId ?? null });
+    await enqueue(JOBS.factsRefresh, { projectId: project.id }, { singletonKey: `facts-${project.id}`, singletonSeconds: 60 });
   }
   return Response.json({ ok: true });
 }

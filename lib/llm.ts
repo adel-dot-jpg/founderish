@@ -5,9 +5,14 @@ import { z } from "zod";
 
 // Free tier: 5 requests/minute and 20/day *per model*. Each chain falls through to the next model when one
 // is out of quota. "smart" writes (facts, audiences, drafts); "fast" judges (rank, receipt check, classify).
-const chain = (...models: (string | undefined)[]) => [...new Set(models.filter((m): m is string => !!m))];
+// RESERVE is never used during development so its daily quota is intact for the live demo: set
+// LLM_USE_RESERVE=1 on demo day and it goes first in both chains.
+const RESERVE = process.env.GEMINI_RESERVE_MODEL ?? "gemini-3-flash-preview";
+const useReserve = process.env.LLM_USE_RESERVE === "1";
+const chain = (...models: (string | undefined)[]) =>
+  [...new Set([useReserve ? RESERVE : undefined, ...models].filter((m): m is string => !!m && (useReserve || m !== RESERVE)))];
 const CHAINS = {
-  smart: chain(process.env.GEMINI_MODEL, "gemini-3.5-flash", "gemini-3.6-flash", "gemini-3-flash-preview", "gemini-3.7-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"),
+  smart: chain(process.env.GEMINI_MODEL, "gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"),
   fast: chain(process.env.GEMINI_FAST_MODEL, "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-flash-lite-latest", "gemini-3.6-flash"),
 };
 export const MODEL = CHAINS.smart[0];

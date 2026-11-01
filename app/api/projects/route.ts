@@ -8,6 +8,7 @@ const Body = z.object({
   repoUrl: z.string().min(3),
   description: z.string().optional(),
   name: z.string().optional(),
+  siteUrl: z.url().optional(),
 });
 
 function slugify(s: string) {
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
 
   const [project] = await db
     .insert(schema.projects)
-    .values({ slug, name, repoUrl: `https://github.com/${owner}/${repo}`, description, ownerEmail: ownerEmail() })
+    .values({ slug, name, repoUrl: `https://github.com/${owner}/${repo}`, siteUrl: parsed.data.siteUrl, description, ownerEmail: ownerEmail() })
     .returning();
 
   await recordEvent(project.id, "project_created", { repoUrl: project.repoUrl });

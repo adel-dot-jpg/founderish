@@ -11,7 +11,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-export const factSource = pgEnum("fact_source", ["repo", "readme", "commit", "signup", "reply", "manual"]);
+export const factSource = pgEnum("fact_source", ["repo", "readme", "commit", "signup", "reply", "manual", "traffic"]);
 export const direction = pgEnum("direction", ["up", "down"]);
 export const audienceStatus = pgEnum("audience_status", ["testing", "winner", "dropped"]);
 export const contactStatus = pgEnum("contact_status", ["found", "drafted", "sent", "replied", "meeting", "dead"]);
@@ -27,6 +27,7 @@ export const projects = pgTable("projects", {
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
   repoUrl: text("repo_url").notNull(),
+  siteUrl: text("site_url"), // the live product, e.g. https://cedarkey.ca (tracked via /t.js)
   description: text("description"),
   pitch: text("pitch"),
   ownerEmail: text("owner_email").notNull(),

@@ -22,6 +22,7 @@ async function main() {
   await boss.schedule(JOBS.peopleFind, "0 9 * * *", {}, { tz: TZ });
   await boss.schedule(JOBS.nicheReport, "30 9 * * *", {}, { tz: TZ });
   await boss.schedule(JOBS.briefSend, "0 10 * * *", {}, { tz: TZ });
+  await boss.schedule(JOBS.factsRefresh, "0 * * * *", {}, { tz: TZ });
 
   if (process.env.MAIL_INBOUND_MODE === "poll") startMailPoll();
 

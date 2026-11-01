@@ -17,6 +17,7 @@ export const JOBS = {
   postDraft: "post.draft",
   nicheReport: "niche.report",
   briefSend: "brief.send",
+  factsRefresh: "facts.refresh",
 } as const;
 
 export type JobName = (typeof JOBS)[keyof typeof JOBS];
@@ -35,6 +36,7 @@ export type JobPayloads = {
   "post.draft": { projectId: string; eventId?: string };
   "niche.report": { projectId?: string };
   "brief.send": { projectId?: string };
+  "facts.refresh": { projectId?: string }; // live traffic/waitlist numbers -> facts (no projectId = all)
 };
 
 const g = globalThis as unknown as { __founderishBoss?: Promise<PgBoss> };
