@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { rememberProject } from "../project-switcher";
 
 export function NewProjectForm() {
   const router = useRouter();
@@ -20,7 +21,9 @@ export function NewProjectForm() {
       return setError("Check the repo and site URL and try again.");
     }
     const project = (await res.json()) as { id: string };
-    router.push(`/?project=${project.id}`);
+    rememberProject(project.id);
+    router.push("/");
+    router.refresh();
   }
 
   const field = "rounded-md border border-zinc-700 bg-transparent px-3 py-2 text-sm";

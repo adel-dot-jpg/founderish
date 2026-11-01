@@ -41,8 +41,7 @@ async function Dashboard({ searchParams }: PageProps<"/">) {
     );
   }
 
-  const [projects, traffic, facts, events, outreach] = await Promise.all([
-    db.select({ id: schema.projects.id, name: schema.projects.name }).from(schema.projects).orderBy(desc(schema.projects.createdAt)),
+  const [traffic, facts, events, outreach] = await Promise.all([
     trafficStats(project.id, 7),
     db.select().from(schema.facts).where(eq(schema.facts.projectId, project.id)).orderBy(desc(schema.facts.createdAt)),
     // Never pull file payloads (resume PDFs) into the feed.
@@ -72,15 +71,6 @@ async function Dashboard({ searchParams }: PageProps<"/">) {
   return (
     <>
       <section className="flex flex-col gap-2">
-        {projects.length > 1 && (
-          <div className="flex flex-wrap gap-2 text-xs">
-            {projects.map((p) => (
-              <Link key={p.id} href={`/?project=${p.id}`} className={`rounded-full border px-2.5 py-0.5 ${p.id === project.id ? "border-brand text-brand" : "border-zinc-700 text-zinc-400"}`}>
-                {p.name}
-              </Link>
-            ))}
-          </div>
-        )}
         <h1 className="font-mono text-3xl font-bold tracking-tight">{project.name}</h1>
         {project.pitch && <p className="max-w-3xl text-lg text-zinc-300">{project.pitch}</p>}
         <p className="flex flex-wrap gap-4 text-sm text-zinc-500">
