@@ -3,6 +3,7 @@ import { desc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { currentProject } from "@/lib/dashboard";
 import { DraftCard } from "./draft-card";
+import { SendBriefButton } from "./send-brief-button";
 
 export default function ApprovalsPage(props: PageProps<"/approvals">) {
   return (
@@ -43,9 +44,12 @@ async function Queue({ searchParams }: PageProps<"/approvals">) {
 
   return (
     <>
-      <p className="text-sm text-zinc-500">
-        {project.name} · {counts.map(([s, n]) => `${n} ${s}`).join(" · ") || "no drafts yet"}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-zinc-500">
+          {project.name} · {counts.map(([s, n]) => `${n} ${s}`).join(" · ") || "no drafts yet"}
+        </p>
+        <SendBriefButton projectId={project.id} />
+      </div>
       <div className="flex flex-col gap-4">
         {rows.map(({ draft, contact, audience }) => (
           <DraftCard
