@@ -24,7 +24,8 @@
     "smoke:agentboxd-guard": "tsx scripts/smoke/agentboxd-guard.ts",
     "smoke:agentboxd-receive": "tsx scripts/smoke/agentboxd-receive.ts",
     "smoke:github": "tsx scripts/smoke/github.ts",
-    "smoke:e2e": "tsx scripts/smoke/e2e.ts"
+    "smoke:e2e": "tsx scripts/smoke/e2e.ts",
+    "try:pipeline": "tsx scripts/try-pipeline.ts"
   },
   "dependencies": {
     "@google/genai": "^2.32.0",

@@ -24,7 +24,7 @@ run("e2e", async () => {
     return { facts, audiences, contacts, drafts };
   };
 
-  const deadline = Date.now() + 3 * 60_000;
+  const deadline = Date.now() + 8 * 60_000; // free-tier Gemini is paced at 5 req/min per model
   let s = await snapshot();
   while (Date.now() < deadline && !s.drafts.some((d) => d.status === "pending")) {
     await sleep(3000);

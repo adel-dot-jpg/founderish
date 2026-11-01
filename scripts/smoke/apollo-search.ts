@@ -1,14 +1,12 @@
 // Free (0 credits). Always hits the real API, even in DEMO_MODE.
+process.env.DEMO_MODE = "false"; // surface Apollo errors instead of falling back to seed people
 import { writeFileSync, mkdirSync } from "node:fs";
 import { fail, run } from "./_util";
 import { ApolloError, searchPeople } from "@/lib/apollo";
 
 run("apollo-search", async () => {
   try {
-    const people = await searchPeople(
-      { person_titles: ["founder"], person_locations: ["Toronto, Canada"], per_page: 3 },
-      { live: true },
-    );
+    const people = await searchPeople({ person_titles: ["founder"], person_locations: ["Toronto, Canada"], per_page: 3 });
     if (people.length === 0) throw new Error("0 results");
     for (const p of people) console.log(`  ${p.name} | ${p.title} | ${p.company} | ${p.apolloId}`);
     // smoke:apollo-enrich reuses the first id.

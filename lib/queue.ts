@@ -1,6 +1,7 @@
 // pg-boss client + job contract (plan.md §5). Job names are shared across the team; don't rename them.
 import PgBoss from "pg-boss";
 import { db, schema } from "./db";
+import { databaseUrl } from "./env";
 
 export const JOBS = {
   ping: "ping",
@@ -40,7 +41,7 @@ const g = globalThis as unknown as { __founderishBoss?: Promise<PgBoss> };
 
 export function getBoss(): Promise<PgBoss> {
   g.__founderishBoss ??= (async () => {
-    const boss = new PgBoss(process.env.DATABASE_URL!);
+    const boss = new PgBoss(databaseUrl());
     boss.on("error", (err) => console.error("[pg-boss]", err));
     await boss.start();
     // pg-boss v10 needs a queue to exist before send/work.
@@ -58,7 +59,8 @@ export async function enqueue<N extends JobName>(
   options: PgBoss.SendOptions = {},
 ): Promise<string | null> {
   const boss = await getBoss();
-  return boss.send(name, data, options);
+  // LLM/API jobs can fail transiently (rate limits); retry with backoff before giving up.
+  return boss.send(name, data, { retryLimit: 2, retryDelay: 30, retryBackoff: true, ...options });
 }
 
 // The only thing routes and webhooks should do: record the trigger, then hand off to the worker.

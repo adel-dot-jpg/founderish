@@ -80,15 +80,23 @@ function toPerson(p: RawPerson): ApolloPerson {
   };
 }
 
-// Free (0 credits). Returns no emails. In DEMO_MODE returns seed data unless { live: true }.
-export async function searchPeople(filters: PeopleFilters, opts: { live?: boolean } = {}): Promise<ApolloPerson[]> {
+// Free (0 credits), so it runs live even in DEMO_MODE. Returns no emails.
+// Falls back to seed people when there's no key or Apollo errors, so the pipeline never blocks on it.
+export async function searchPeople(filters: PeopleFilters): Promise<ApolloPerson[]> {
   const perPage = filters.per_page ?? 10;
-  if (isDemoMode() && !opts.live) return SEED_PEOPLE.slice(0, perPage);
-  const data = await apolloPost<{ people?: RawPerson[] }>("/mixed_people/api_search", { ...filters, per_page: perPage });
-  return (data.people ?? []).map(toPerson);
+  if (!process.env.APOLLO_API_KEY) return SEED_PEOPLE.slice(0, perPage);
+  try {
+    const data = await apolloPost<{ people?: RawPerson[] }>("/mixed_people/api_search", { ...filters, per_page: perPage });
+    return (data.people ?? []).map(toPerson);
+  } catch (err) {
+    if (!isDemoMode()) throw err;
+    console.warn("[apollo] search failed, using seed people:", err instanceof Error ? err.message : err);
+    return SEED_PEOPLE.slice(0, perPage);
+  }
 }
 
-// COSTS CREDITS. Up to 10 ids per call. In DEMO_MODE returns seed people with allowlisted emails unless { live: true }.
+// COSTS CREDITS. Up to 10 ids per call. In DEMO_MODE nobody is enriched: each id gets a SEND_ALLOWLIST
+// address instead, so demo sends reach teammates, never the real person. { live: true } forces a real call.
 export async function enrichPeople(ids: string[], opts: { live?: boolean } = {}): Promise<ApolloPerson[]> {
   if (ids.length === 0) return [];
   if (ids.length > 10) throw new Error("enrichPeople takes at most 10 ids per call");
@@ -97,9 +105,9 @@ export async function enrichPeople(ids: string[], opts: { live?: boolean } = {})
     return ids.map((id, i) => {
       const seed = SEED_PEOPLE.find((p) => p.apolloId === id);
       return {
-        ...(seed ?? { apolloId: id, name: "Demo Contact", title: null, company: null }),
+        ...(seed ?? { apolloId: id, name: "", title: null, company: null }),
         email: allow.length ? allow[i % allow.length] : null,
-        linkedinUrl: "https://www.linkedin.com/",
+        linkedinUrl: null,
       };
     });
   }

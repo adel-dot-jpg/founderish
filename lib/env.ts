@@ -35,6 +35,16 @@ export function ownerEmail(): string {
   return (process.env.OWNER_EMAIL ?? "").trim().toLowerCase();
 }
 
+// Remote Postgres (e.g. Render's external URL) requires TLS; local and Render-internal hosts don't.
+export function databaseUrl(): string {
+  const raw = process.env.DATABASE_URL ?? "";
+  if (!raw) return raw;
+  const url = new URL(raw);
+  const local = ["localhost", "127.0.0.1"].includes(url.hostname) || !url.hostname.includes(".");
+  if (!local && !url.searchParams.has("sslmode")) url.searchParams.set("sslmode", "verify-full");
+  return url.toString();
+}
+
 export function appUrl(): string {
   return (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
 }
