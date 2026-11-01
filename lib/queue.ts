@@ -19,6 +19,7 @@ export const JOBS = {
   briefSend: "brief.send",
   factsRefresh: "facts.refresh",
   sourceIngest: "source.ingest",
+  mailPoll: "mail.poll",
 } as const;
 
 export type JobName = (typeof JOBS)[keyof typeof JOBS];
@@ -38,6 +39,7 @@ export type JobPayloads = {
   "niche.report": { projectId?: string };
   "brief.send": { projectId?: string };
   "facts.refresh": { projectId?: string }; // live traffic/waitlist numbers -> facts (no projectId = all)
+  "mail.poll": Record<string, never>; // one pass over the coach inbox
   "source.ingest": { eventId: string }; // website / resume PDF / pasted text -> facts; the input lives in events.payload
 };
 

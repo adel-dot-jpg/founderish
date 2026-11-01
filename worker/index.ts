@@ -1,6 +1,5 @@
 import "dotenv/config";
-import { getBoss, recordEvent, enqueue, JOBS, type JobName } from "@/lib/queue";
-import { listInbound, parseInbound } from "@/lib/mail";
+import { getBoss, enqueue, JOBS, type JobName } from "@/lib/queue";
 import { handlers } from "./handlers";
 
 const TZ = "America/Toronto";
@@ -36,26 +35,9 @@ async function main() {
   process.on("SIGTERM", shutdown);
 }
 
-// Fallback for when the inbound webhook can't reach us: every 30s, turn new inbound mail into
-// mail_received events, exactly as /api/webhooks/mail would. Only mail that arrives after boot.
+// Fallback for when the inbound webhook can't reach us: check the coach inbox every 30s (DB-deduped mail.poll).
 function startMailPoll() {
-  const bootedAt = Date.now();
-  const seen = new Set<string>();
-  const tick = async () => {
-    try {
-      for (const msg of await listInbound()) {
-        if (seen.has(msg.id) || Date.parse(msg.created_at) < bootedAt) continue;
-        seen.add(msg.id);
-        const event = await recordEvent(null, "mail_received", { message: msg, via: "poll" });
-        await enqueue(JOBS.mailInbound, { eventId: event.id });
-        console.log(`[worker] polled inbound mail from ${parseInbound(msg).from}`);
-      }
-    } catch (err) {
-      console.error("[worker] mail poll failed", err);
-    }
-  };
-  setInterval(tick, 30_000);
-  void tick();
+  setInterval(() => void enqueue(JOBS.mailPoll, {}, { singletonKey: "mail-poll", singletonSeconds: 20, retryLimit: 0 }), 30_000);
 }
 
 // Network blips (DNS, resets) surface as stray errors from pg/pg-boss internals; log them and keep working.

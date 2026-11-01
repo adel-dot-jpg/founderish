@@ -8,6 +8,7 @@ import { trafficStats } from "@/lib/traffic";
 import { CopyButton } from "./copy-button";
 import { AddFactForm } from "./add-fact-form";
 import { SourceForm } from "./source-form";
+import { ActionButton } from "./action-button";
 
 export default function Overview(props: PageProps<"/">) {
   return (
@@ -77,6 +78,7 @@ async function Dashboard({ searchParams }: PageProps<"/">) {
           {project.siteUrl && <a href={project.siteUrl} className="hover:text-white">{project.siteUrl.replace(/^https?:\/\//, "")}</a>}
           <a href={project.repoUrl} className="hover:text-white">{project.repoUrl.replace("https://github.com/", "github/")}</a>
           <Link href={`/p/${project.slug}`} className="hover:text-white">landing page</Link>
+          <ActionButton url={`/api/projects/${project.id}/ingest`} label="Re-read repo" busyLabel="Reading the repo…" refreshAfterMs={30000} />
         </p>
       </section>
 
@@ -177,6 +179,7 @@ function describe(e: { type: string; payload: Record<string, unknown> }): string
     case "source_added": return `Reading ${p.url ?? p.filename ?? "pasted text"}`;
     case "source_ingested": return `Learned ${p.facts} receipts from ${p.label}`;
     case "post_requested": return "Post requested";
+    case "ingest_requested": return "Re-reading the repo";
     case "brief_requested": return "Brief requested";
     case "post_drafted": return "LinkedIn post drafted";
     case "post_published": return "LinkedIn post published";
