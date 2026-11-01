@@ -44,3 +44,4 @@ next-env.d.ts
 # worker bundle
 /dist
 /.smoke
+scripts/_tmp*

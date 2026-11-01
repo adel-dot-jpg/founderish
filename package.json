@@ -25,7 +25,8 @@
     "smoke:agentboxd-receive": "tsx scripts/smoke/agentboxd-receive.ts",
     "smoke:github": "tsx scripts/smoke/github.ts",
     "smoke:e2e": "tsx scripts/smoke/e2e.ts",
-    "try:pipeline": "tsx scripts/try-pipeline.ts"
+    "try:pipeline": "tsx scripts/try-pipeline.ts",
+    "fake:inbound": "tsx scripts/fake-inbound.ts"
   },
   "dependencies": {
     "@google/genai": "^2.32.0",

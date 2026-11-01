@@ -50,6 +50,8 @@ export function getBoss(): Promise<PgBoss> {
     }
     return boss;
   })();
+  // Don't cache a failed start (e.g. a network blip): the next call retries.
+  g.__founderishBoss.catch(() => (g.__founderishBoss = undefined));
   return g.__founderishBoss;
 }
 
@@ -60,7 +62,8 @@ export async function enqueue<N extends JobName>(
 ): Promise<string | null> {
   const boss = await getBoss();
   // LLM/API jobs can fail transiently (rate limits); retry with backoff before giving up.
-  return boss.send(name, data, { retryLimit: 2, retryDelay: 30, retryBackoff: true, ...options });
+  // expireInSeconds: a job orphaned by a crashed worker is retried after 5 min instead of pg-boss's default 15.
+  return boss.send(name, data, { retryLimit: 2, retryDelay: 30, retryBackoff: true, expireInSeconds: 300, ...options });
 }
 
 // The only thing routes and webhooks should do: record the trigger, then hand off to the worker.

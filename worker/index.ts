@@ -57,7 +57,19 @@ function startMailPoll() {
   void tick();
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
+// Network blips (DNS, resets) surface as stray errors from pg/pg-boss internals; log them and keep working.
+const NETWORK_CODES = new Set(["ECONNRESET", "ENOTFOUND", "ETIMEDOUT", "ECONNREFUSED", "EPIPE", "EAI_AGAIN"]);
+process.on("unhandledRejection", (err) => console.error("[worker] unhandled rejection:", err));
+process.on("uncaughtException", (err: NodeJS.ErrnoException) => {
+  console.error("[worker] uncaught exception:", err);
+  if (!NETWORK_CODES.has(err.code ?? "")) process.exit(1);
 });
+
+function boot() {
+  main().catch((err: NodeJS.ErrnoException) => {
+    console.error("[worker] boot failed:", err.message);
+    if (!NETWORK_CODES.has(err.code ?? "")) process.exit(1);
+    setTimeout(boot, 5000);
+  });
+}
+boot();
