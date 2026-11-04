@@ -5,21 +5,26 @@ import { handlers } from "./handlers";
 const TZ = "America/Toronto";
 
 async function main() {
-  const boss = await getBoss();
+  const boss = await getBoss({ worker: true });
 
   for (const name of Object.keys(handlers) as JobName[]) {
     const handle = handlers[name] as (data: unknown) => Promise<void>;
     await boss.work(name, { pollingIntervalSeconds: 1 }, async (jobs) => {
       for (const job of jobs) {
         console.log(`[worker] ${name} ${job.id}`);
-        await handle(job.data);
+        try {
+          await handle(job.data);
+        } catch (err) {
+          // pg-boss records the failure and retries; log it so it isn't silent.
+          console.error(`[worker] ${name} ${job.id} failed:`, err instanceof Error ? err.message : err);
+          throw err;
+        }
       }
     });
   }
 
   // Daily coach runs (plan.md §8).
   await boss.schedule(JOBS.peopleFind, "0 9 * * *", {}, { tz: TZ });
-  await boss.schedule(JOBS.nicheReport, "30 9 * * *", {}, { tz: TZ });
   await boss.schedule(JOBS.briefSend, "0 10 * * *", {}, { tz: TZ });
   await boss.schedule(JOBS.factsRefresh, "0 * * * *", {}, { tz: TZ });
 

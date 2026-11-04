@@ -13,7 +13,6 @@
     "worker:start": "node dist/worker/index.mjs",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "seed": "tsx scripts/seed-demo.ts",
     "smoke:env": "tsx scripts/smoke/env.ts",
     "smoke:db": "drizzle-kit push --force && tsx scripts/smoke/db.ts",
     "smoke:queue": "tsx scripts/smoke/queue.ts",

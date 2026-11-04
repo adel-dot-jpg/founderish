@@ -1,6 +1,6 @@
-# Render Blueprint (plan.md §8). Secrets marked sync: false are entered in the Render dashboard.
-# The database (founderish, Oregon) is created by hand in the dashboard, not by this Blueprint:
-# set DATABASE_URL to its Internal Database URL on both services. Keep everything in one region.
+# Render Blueprint: the web app and the worker. Secrets marked sync: false are entered in the Render dashboard.
+# Create the Postgres database by hand in the same region and set DATABASE_URL to its Internal Database URL
+# on both services. The schema is pushed before every web deploy.
 services:
   - type: web
     name: founderish-web
@@ -32,8 +32,6 @@ services:
       - { key: OWNER_EMAIL, sync: false }
       - { key: SEND_ALLOWLIST, sync: false }
       - { key: OWNER_NAME, sync: false }
-      - key: LLM_USE_RESERVE # flip to "1" right before the demo
-        value: "0"
 
   - type: worker
     name: founderish-worker

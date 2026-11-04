@@ -1,7 +1,6 @@
 // Apollo adapter (plan.md §6). Header auth only; search is free, enrichment costs credits.
 import type { ApolloFilters } from "./db/schema";
 import { isDemoMode, sendAllowlist } from "./env";
-import { SEED_PEOPLE } from "./apollo-seed";
 
 const BASE = "https://api.apollo.io/api/v1";
 
@@ -80,36 +79,21 @@ function toPerson(p: RawPerson): ApolloPerson {
   };
 }
 
-// Free (0 credits), so it runs live even in DEMO_MODE. Returns no emails.
-// Falls back to seed people when there's no key or Apollo errors, so the pipeline never blocks on it.
+// Free (0 credits), so it runs live even in DEMO_MODE. Returns no emails, and last names come back obfuscated.
+// Every contact is a real search result: no seeded or placeholder people.
 export async function searchPeople(filters: PeopleFilters): Promise<ApolloPerson[]> {
-  const perPage = filters.per_page ?? 10;
-  if (!process.env.APOLLO_API_KEY) return SEED_PEOPLE.slice(0, perPage);
-  try {
-    const data = await apolloPost<{ people?: RawPerson[] }>("/mixed_people/api_search", { ...filters, per_page: perPage });
-    return (data.people ?? []).map(toPerson);
-  } catch (err) {
-    if (!isDemoMode()) throw err;
-    console.warn("[apollo] search failed, using seed people:", err instanceof Error ? err.message : err);
-    return SEED_PEOPLE.slice(0, perPage);
-  }
+  const data = await apolloPost<{ people?: RawPerson[] }>("/mixed_people/api_search", { ...filters, per_page: filters.per_page ?? 10 });
+  return (data.people ?? []).map(toPerson);
 }
 
 // COSTS CREDITS. Up to 10 ids per call. In DEMO_MODE nobody is enriched: each id gets a SEND_ALLOWLIST
-// address instead, so demo sends reach teammates, never the real person. { live: true } forces a real call.
+// address instead, so demo sends reach you, never the real person. { live: true } forces a real call.
 export async function enrichPeople(ids: string[], opts: { live?: boolean } = {}): Promise<ApolloPerson[]> {
   if (ids.length === 0) return [];
   if (ids.length > 10) throw new Error("enrichPeople takes at most 10 ids per call");
   if (isDemoMode() && !opts.live) {
     const allow = sendAllowlist();
-    return ids.map((id, i) => {
-      const seed = SEED_PEOPLE.find((p) => p.apolloId === id);
-      return {
-        ...(seed ?? { apolloId: id, name: "", title: null, company: null }),
-        email: allow.length ? allow[i % allow.length] : null,
-        linkedinUrl: null,
-      };
-    });
+    return ids.map((id, i) => ({ apolloId: id, name: "", title: null, company: null, email: allow.length ? allow[i % allow.length] : null, linkedinUrl: null }));
   }
   const data = await apolloPost<{ matches?: (RawPerson | null)[] }>("/people/bulk_match", {
     details: ids.map((id) => ({ id })),

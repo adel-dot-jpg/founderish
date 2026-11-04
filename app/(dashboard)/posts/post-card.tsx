@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ReceiptChips } from "../receipt-chips";
+import { useRefreshFor } from "../live-refresh";
 
 const STATUS_STYLE: Record<string, string> = {
   checking: "bg-zinc-800 text-zinc-300",
@@ -42,26 +44,17 @@ export function PostCard({ post, facts }: { post: { id: string; status: string; 
         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLE[post.status] ?? ""}`}>{STATUS_LABEL[post.status] ?? post.status}</span>
       </div>
       <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-zinc-100">{post.body}</p>
-      {facts.length > 0 && (
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-zinc-500">Receipts:</span>
-          {facts.map((f, i) => (
-            <span key={i} title={f} className="cursor-help rounded border border-emerald-800 bg-emerald-950 px-1.5 py-0.5 text-xs text-emerald-200">
-              ✓ {f.length > 48 ? `${f.slice(0, 48)}…` : f}
-            </span>
-          ))}
-        </div>
-      )}
+      <ReceiptChips facts={facts} />
       <footer className="mt-4 flex flex-wrap gap-2">
         {post.status === "pending" && (
-          <>
-            <button disabled={busy} onClick={() => act({ action: "approve" })} className="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-black hover:brightness-110 disabled:opacity-50">
-              Approve
-            </button>
-            <button disabled={busy} onClick={() => act({ action: "reject" })} className="rounded-md px-3 py-1.5 text-sm text-zinc-500 hover:text-red-400">
-              Reject
-            </button>
-          </>
+          <button disabled={busy} onClick={() => act({ action: "approve" })} className="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-black hover:brightness-110 disabled:opacity-50">
+            Approve
+          </button>
+        )}
+        {(post.status === "pending" || post.status === "flagged") && (
+          <button disabled={busy} onClick={() => act({ action: "reject" })} className="rounded-md px-3 py-1.5 text-sm text-zinc-500 hover:text-red-400">
+            Reject
+          </button>
         )}
         {post.status === "approved" && (
           <>
@@ -79,7 +72,7 @@ export function PostCard({ post, facts }: { post: { id: string; status: string; 
 }
 
 export function DraftPostButton({ projectId }: { projectId: string }) {
-  const router = useRouter();
+  const refreshFor = useRefreshFor();
   const [note, setNote] = useState("");
   const [state, setState] = useState<"idle" | "busy" | "queued">("idle");
 
@@ -87,9 +80,11 @@ export function DraftPostButton({ projectId }: { projectId: string }) {
     e.preventDefault();
     setState("busy");
     const res = await fetch("/api/posts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ projectId, note: note || undefined }) });
-    setState(res.ok ? "queued" : "idle");
+    if (!res.ok) return setState("idle");
+    setState("queued");
     setNote("");
-    setTimeout(() => router.refresh(), 15000);
+    // The post shows up once the worker drafts it; the page's own live refresh takes over from there.
+    refreshFor(45_000, () => setState("idle"));
   }
 
   return (
@@ -100,8 +95,8 @@ export function DraftPostButton({ projectId }: { projectId: string }) {
         placeholder="Optional: what happened? e.g. “Shipped bulk sending today”"
         className="min-w-64 flex-1 rounded-md border border-zinc-700 bg-transparent px-3 py-1.5 text-sm"
       />
-      <button disabled={state === "busy"} className="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-black hover:brightness-110 disabled:opacity-50">
-        {state === "queued" ? "Drafting… (about 30s)" : "Draft a post"}
+      <button disabled={state !== "idle"} className="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-black hover:brightness-110 disabled:opacity-50">
+        {state === "idle" ? "Draft a post" : "Drafting…"}
       </button>
     </form>
   );

@@ -1,4 +1,4 @@
-// Shared contract (plan.md §3). Don't rename tables, columns or enum values without telling the team.
+// The data model (plan.md §3), shared by the web app and the worker.
 import { sql } from "drizzle-orm";
 import {
   integer,
@@ -15,7 +15,7 @@ export const factSource = pgEnum("fact_source", ["repo", "readme", "commit", "si
 export const direction = pgEnum("direction", ["up", "down"]);
 export const audienceStatus = pgEnum("audience_status", ["testing", "winner", "dropped"]);
 export const contactStatus = pgEnum("contact_status", ["found", "drafted", "sent", "replied", "meeting", "dead"]);
-export const draftKind = pgEnum("draft_kind", ["email", "followup", "reply", "post", "connect_note"]);
+export const draftKind = pgEnum("draft_kind", ["email", "followup", "reply", "post"]);
 // checking = waiting on receipt.check; flagged = failed it and needs a human.
 export const draftStatus = pgEnum("draft_status", ["checking", "flagged", "pending", "approved", "sent", "rejected"]);
 export const messageDirection = pgEnum("message_direction", ["out", "in"]);

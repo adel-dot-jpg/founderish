@@ -1,5 +1,5 @@
-// Dev/rehearsal tool: inject an inbound reply into the newest sent thread (or --thread <id>) exactly as the
-// mail webhook/poller would, then let the worker handle it. Data it creates is fake: clean up before the demo.
+// Dev tool: inject an inbound reply into the newest sent thread (or --thread <id>) exactly as the mail
+// webhook/poller would, then let the worker handle it. Use it on a dev database: the reply it creates is fake.
 // Usage: npm run fake:inbound -- "Love this, can we talk Thursday?" [--thread <threadId>] [--from <email>]
 import "dotenv/config";
 import { randomUUID } from "node:crypto";

@@ -1,14 +1,24 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { enqueue, recordEvent, JOBS, type JobPayloads } from "@/lib/queue";
-import { ingestRepo } from "@/lib/github";
+import { ingestRepo, type RepoProfile } from "@/lib/github";
 import { extractFacts } from "@/lib/prompts/profile";
 import { loadProject } from "./_context";
 
 // Repo -> facts (receipts) + pitch -> audiences.generate.
 export default async function handle({ projectId }: JobPayloads["project.ingest"]) {
   const { project } = await loadProject(projectId);
-  const profile = await ingestRepo(project.repoUrl);
+  let profile: RepoProfile;
+  try {
+    profile = await ingestRepo(project.repoUrl);
+  } catch (err) {
+    // A typo or a private repo the token can't see won't fix itself on retry. Say so; the owner can grant access
+    // and press "Re-read repo", or add other sources and use "Find people now" without the repo.
+    const status = (err as { status?: number }).status;
+    if (status !== 401 && status !== 403 && status !== 404) throw err;
+    await recordEvent(projectId, "ingest_failed", { reason: status === 404 ? "not found, or GITHUB_TOKEN can't read it" : `GitHub returned ${status}` });
+    return;
+  }
   const { pitch, facts } = await extractFacts(profile, project.description);
 
   await db.transaction(async (tx) => {

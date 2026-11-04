@@ -6,20 +6,24 @@ import { enqueue, recordEvent, JOBS } from "@/lib/queue";
 const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("approve") }),
   z.object({ action: z.literal("reject") }),
-  z.object({ action: z.literal("posted") }), // owner published an approved post/note on LinkedIn themselves
+  z.object({ action: z.literal("posted") }), // owner published an approved post on LinkedIn themselves
   z.object({ action: z.literal("edit"), subject: z.string().optional(), body: z.string().min(1) }),
 ]);
 
 export async function PATCH(req: Request, ctx: RouteContext<"/api/drafts/[id]">) {
   const { id } = await ctx.params;
-  const parsed = Body.safeParse(await req.json());
+  const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: parsed.error.issues }, { status: 400 });
   const input = parsed.data;
 
-  const [draft] = await db.select().from(schema.drafts).where(eq(schema.drafts.id, id));
+  const [draft] = z.uuid().safeParse(id).success ? await db.select().from(schema.drafts).where(eq(schema.drafts.id, id)) : [];
   if (!draft) return Response.json({ error: "not found" }, { status: 404 });
 
   if (input.action === "edit") {
+    // Only drafts still waiting on the owner can change: editing a sent one would re-check it into "pending" again.
+    if (draft.status !== "pending" && draft.status !== "flagged") {
+      return Response.json({ error: `draft is ${draft.status}, it can't be edited` }, { status: 409 });
+    }
     // Edited text goes back through the receipt check before it can be approved.
     const [updated] = await db
       .update(schema.drafts)
@@ -37,14 +41,15 @@ export async function PATCH(req: Request, ctx: RouteContext<"/api/drafts/[id]">)
     return Response.json(updated);
   }
 
-  if (draft.status !== "pending") {
+  // Approve needs a draft that passed the receipt check; a flagged one can still be thrown away.
+  if (draft.status !== "pending" && !(input.action === "reject" && draft.status === "flagged")) {
     return Response.json({ error: `draft is ${draft.status}, not pending` }, { status: 409 });
   }
 
   const status = input.action === "approve" ? "approved" : "rejected";
   const [updated] = await db.update(schema.drafts).set({ status }).where(eq(schema.drafts.id, id)).returning();
   await recordEvent(draft.projectId, `draft_${status}`, { draftId: id, via: "dashboard" });
-  if (status === "approved" && draft.kind !== "post" && draft.kind !== "connect_note") {
+  if (status === "approved" && draft.kind !== "post") {
     await enqueue(JOBS.outreachSend, { draftId: id });
   }
   return Response.json(updated);

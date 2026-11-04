@@ -1,5 +1,7 @@
 # Receipts — Build Plan
 
+> The original hackathon plan, kept for history. The app shipped as founder(ish), on Gemini instead of the Anthropic SDK; README.md covers what was built.
+
 > Your AI cofounder for the business side. It pitches you **upward** to people who can open doors, and reaches **downward** to find the users who need what you built. Every claim is backed by a receipt from your real project.
 
 Sponsor track: **Agentboxd** (the coach's inbox is the backbone of all outreach).

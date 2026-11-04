@@ -1,5 +1,4 @@
 // Free (0 credits). Always hits the real API, even in DEMO_MODE.
-process.env.DEMO_MODE = "false"; // surface Apollo errors instead of falling back to seed people
 import { writeFileSync, mkdirSync } from "node:fs";
 import { fail, run } from "./_util";
 import { ApolloError, searchPeople } from "@/lib/apollo";

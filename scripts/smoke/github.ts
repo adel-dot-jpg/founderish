@@ -1,4 +1,4 @@
-// Part 1: ingestRepo(TEST_REPO). Part 2 (--push): wait for a verified github_push event after a teammate pushes.
+// Part 1: ingestRepo(TEST_REPO). Part 2 (--push): wait for a verified github_push event after you push.
 import { and, eq, gt } from "drizzle-orm";
 import { run, sleep } from "./_util";
 import { ingestRepo } from "@/lib/github";

@@ -18,7 +18,8 @@ export function NewProjectForm() {
     const res = await fetch("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (!res.ok) {
       setBusy(false);
-      return setError("Check the repo and site URL and try again.");
+      const { error } = (await res.json().catch(() => ({}))) as { error?: unknown };
+      return setError(typeof error === "string" ? error : "Check the repo and site URL and try again.");
     }
     const project = (await res.json()) as { id: string };
     rememberProject(project.id);
@@ -31,20 +32,20 @@ export function NewProjectForm() {
     <form onSubmit={submit} className="flex flex-col gap-4">
       <label className="flex flex-col gap-1 text-sm">
         GitHub repo
-        <input name="repoUrl" required placeholder="adel-dot-jpg/clauseforge or https://github.com/…" className={field} />
+        <input name="repoUrl" required placeholder="owner/name or https://github.com/…" className={field} />
         <span className="text-xs text-zinc-500">Private repos work if your GITHUB_TOKEN can read them.</span>
       </label>
       <label className="flex flex-col gap-1 text-sm">
         Name
-        <input name="name" placeholder="CedarKey" className={field} />
+        <input name="name" placeholder="Defaults to the repo name" className={field} />
       </label>
       <label className="flex flex-col gap-1 text-sm">
         Live site
-        <input name="siteUrl" type="url" placeholder="https://cedarkey.ca" className={field} />
+        <input name="siteUrl" type="url" placeholder="https://your-product.com" className={field} />
       </label>
       <label className="flex flex-col gap-1 text-sm">
         One line in your words (optional)
-        <input name="description" placeholder="Province-specific short-term rental agreements for Canadian hosts" className={field} />
+        <input name="description" placeholder="What it does and who it's for" className={field} />
       </label>
       <div className="flex items-center gap-3">
         <button disabled={busy} className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-black hover:brightness-110 disabled:opacity-50">

@@ -4,15 +4,8 @@ import Link from "next/link";
 import { desc } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { currentProject } from "@/lib/dashboard";
+import { NavLinks } from "./nav-links";
 import { ProjectSwitcher } from "./project-switcher";
-
-const NAV = [
-  { href: "/", label: "Overview" },
-  { href: "/approvals", label: "Approvals" },
-  { href: "/people", label: "People" },
-  { href: "/posts", label: "Posts" },
-  { href: "/niche", label: "Niche" },
-];
 
 export default function DashboardLayout({ children }: LayoutProps<"/">) {
   return (
@@ -22,11 +15,7 @@ export default function DashboardLayout({ children }: LayoutProps<"/">) {
           <Link href="/" aria-label="founder(ish) home">
             <Image src="/logotransparent.png" alt="founder(ish)" width={148} height={40} priority className="h-8 w-auto" />
           </Link>
-          {NAV.map((n) => (
-            <Link key={n.href} href={n.href} className="text-sm text-zinc-400 hover:text-white">
-              {n.label}
-            </Link>
-          ))}
+          <NavLinks />
           <div className="ml-auto flex items-center gap-2">
             <Suspense fallback={null}>
               <Switcher />

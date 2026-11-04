@@ -1,5 +1,7 @@
 # Context for Claude Code: read this first, then plan.md
 
+> The brief as written before the LarpHacks build (Nov 1, 2026). The product rules still apply; README.md describes what shipped and where it differs.
+
 ## Situation
 We're a student team at **LarpHacks** (Toronto, Nov 1, 2026). Theme: **build something that helps engineers LARP as someone they're not.** Hard submission cutoff **6:00 PM Toronto time**; feature freeze at **4:00 PM**. Each team gets a 2-minute demo + 2-minute Q&A.
 

@@ -17,8 +17,8 @@ const STATUS_FOR = {
   unsubscribe: "dead",
 } as const;
 
-// Inbound mail is untrusted. Thread match first (a teammate replying as a contact is a contact reply even from
-// OWNER_EMAIL); unmatched mail from the owner with passing SPF/DMARC is a brief command.
+// Inbound mail is untrusted. Thread match first (replying to outreach as a test contact counts as a contact reply,
+// even from OWNER_EMAIL); unmatched mail from the owner with passing SPF/DMARC is a brief command.
 export default async function handle({ eventId }: JobPayloads["mail.inbound"]) {
   const [event] = await db.select().from(schema.events).where(eq(schema.events.id, eventId));
   if (!event) return;
@@ -58,7 +58,11 @@ export default async function handle({ eventId }: JobPayloads["mail.inbound"]) {
   }
 
   const c = await classifyReply({ contact, ourEmail: original.message.body ?? "", reply: mail.text });
-  await db.update(schema.contacts).set({ status: STATUS_FOR[c.classification] }).where(eq(schema.contacts.id, contact.id));
+  const status = STATUS_FOR[c.classification];
+  // A follow-up question from someone who already booked a call keeps them at "meeting".
+  if (!(contact.status === "meeting" && status === "replied")) {
+    await db.update(schema.contacts).set({ status }).where(eq(schema.contacts.id, contact.id));
+  }
   // Flywheel: a positive reply is itself a receipt future pitches can use.
   if (!seen && c.new_fact && ["interested", "meeting", "advice"].includes(c.classification)) {
     await db.insert(schema.facts).values({ projectId, text: c.new_fact, sourceType: "reply" });
@@ -110,7 +114,7 @@ async function handleOwnerCommand(text: string, messageId: string) {
     const ok = approve.includes(d.briefNumber!);
     await db.update(schema.drafts).set({ status: ok ? "approved" : "rejected" }).where(eq(schema.drafts.id, d.id));
     await recordEvent(d.projectId, ok ? "draft_approved" : "draft_rejected", { draftId: d.id, via: "email", briefNumber: d.briefNumber });
-    if (ok && d.kind !== "post" && d.kind !== "connect_note") await enqueue(JOBS.outreachSend, { draftId: d.id });
+    if (ok && d.kind !== "post") await enqueue(JOBS.outreachSend, { draftId: d.id });
   }
   await recordEvent(drafts[0]?.projectId ?? null, "owner_command", { approve, reject, matched: drafts.length });
 }

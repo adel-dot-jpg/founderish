@@ -16,7 +16,8 @@ const Beacon = z.object({
   props: z.record(z.string(), z.unknown()).optional(),
 });
 
-const projectIds = new Map<string, string | null>();
+// slug -> project id. Only hits are cached, so junk slugs from the open internet can't grow it.
+const projectIds = new Map<string, string>();
 
 export function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS });
@@ -25,16 +26,22 @@ export function OPTIONS() {
 export async function POST(req: Request) {
   if (/bot|crawler|spider|headless/i.test(req.headers.get("user-agent") ?? "")) return new Response(null, { status: 204, headers: CORS });
 
-  const parsed = Beacon.safeParse(JSON.parse((await req.text()) || "{}"));
+  let raw: unknown;
+  try {
+    raw = JSON.parse(await req.text());
+  } catch {
+    raw = null;
+  }
+  const parsed = Beacon.safeParse(raw);
   if (!parsed.success) return Response.json({ error: "bad beacon" }, { status: 400, headers: CORS });
   const b = parsed.data;
 
-  if (!projectIds.has(b.project)) {
+  let projectId = projectIds.get(b.project);
+  if (!projectId) {
     const [p] = await db.select({ id: schema.projects.id }).from(schema.projects).where(eq(schema.projects.slug, b.project));
-    projectIds.set(b.project, p?.id ?? null);
+    if (!p) return Response.json({ error: "unknown project" }, { status: 404, headers: CORS });
+    projectIds.set(b.project, (projectId = p.id));
   }
-  const projectId = projectIds.get(b.project);
-  if (!projectId) return Response.json({ error: "unknown project" }, { status: 404, headers: CORS });
 
   let referrer: string | null = null;
   try {

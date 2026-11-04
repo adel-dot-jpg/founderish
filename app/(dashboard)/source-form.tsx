@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRefreshFor } from "./live-refresh";
 
 type Kind = "website" | "resume" | "text";
 
@@ -12,7 +12,7 @@ const TABS: { kind: Kind; label: string; hint: string }[] = [
 ];
 
 export function SourceForm({ projectId }: { projectId: string }) {
-  const router = useRouter();
+  const refreshFor = useRefreshFor();
   const [kind, setKind] = useState<Kind>("website");
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
@@ -43,7 +43,7 @@ export function SourceForm({ projectId }: { projectId: string }) {
     setUrl("");
     setText("");
     setFile(null);
-    setTimeout(() => router.refresh(), 20000);
+    refreshFor(45_000);
   }
 
   const tab = TABS.find((t) => t.kind === kind)!;
@@ -64,7 +64,7 @@ export function SourceForm({ projectId }: { projectId: string }) {
       <p className="text-xs text-zinc-500">{tab.hint}</p>
       <form onSubmit={submit} className="flex flex-col gap-2">
         {kind === "website" && (
-          <input type="url" required value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://cedarkey.ca" className="rounded-md border border-zinc-700 bg-transparent px-3 py-1.5 text-sm" />
+          <input type="url" required value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://your-product.com" className="rounded-md border border-zinc-700 bg-transparent px-3 py-1.5 text-sm" />
         )}
         {kind === "resume" && (
           <input type="file" required accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-sm text-zinc-300 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-800 file:px-3 file:py-1.5 file:text-zinc-200" />
@@ -76,7 +76,7 @@ export function SourceForm({ projectId }: { projectId: string }) {
           <button disabled={state === "busy"} className="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-black hover:brightness-110 disabled:opacity-50">
             {state === "busy" ? "Uploading…" : "Learn from this"}
           </button>
-          {state === "queued" && <span className="text-xs text-zinc-400">Reading it now. New receipts appear below in about 20s.</span>}
+          {state === "queued" && <span className="text-xs text-zinc-400">Reading it now. New receipts appear below as soon as they&apos;re extracted.</span>}
           {error && <span className="text-xs text-red-400">{error}</span>}
         </div>
       </form>

@@ -1,18 +1,27 @@
 // Shared env helpers. Every service (web, worker, scripts) reads the same vars; see .env.example.
 
+// What the coach needs to run end to end. SEND_ALLOWLIST is required because DEMO_MODE is on by default.
 export const REQUIRED_ENV = [
   "DATABASE_URL",
   "GEMINI_API_KEY",
   "APOLLO_API_KEY",
   "AGENTBOXD_API_KEY",
-  "AGENTBOXD_WEBHOOK_SECRET",
   "GITHUB_TOKEN",
-  "GITHUB_WEBHOOK_SECRET",
-  "TEST_REPO",
-  "APP_URL",
   "OWNER_EMAIL",
   "SEND_ALLOWLIST",
+] as const;
+
+// Webhooks (instead of polling / to draft posts on push), smoke tests, and defaults worth knowing about.
+export const OPTIONAL_ENV = [
+  "APP_URL",
   "DEMO_MODE",
+  "AGENTBOXD_INBOX",
+  "MAIL_INBOUND_MODE",
+  "AGENTBOXD_WEBHOOK_SECRET",
+  "GITHUB_WEBHOOK_SECRET",
+  "TEST_REPO",
+  "OWNER_NAME",
+  "OWNER_LOCATION",
 ] as const;
 
 export function missingEnv(): string[] {

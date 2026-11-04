@@ -3,6 +3,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { currentProject } from "@/lib/dashboard";
 import { PostCard, DraftPostButton } from "./post-card";
+import { LiveRefresh } from "../live-refresh";
 
 export default function PostsPage(props: PageProps<"/posts">) {
   return (
@@ -38,6 +39,7 @@ async function Posts({ searchParams }: PageProps<"/posts">) {
   return (
     <>
       <DraftPostButton projectId={project.id} />
+      {posts.some((p) => p.status === "checking") && <LiveRefresh />}
       {posts.length === 0 && <p className="text-zinc-500">No posts yet. Push to {project.repoUrl.replace("https://github.com/", "")} or draft one above.</p>}
       <div className="flex flex-col gap-4">
         {posts.map((p) => (

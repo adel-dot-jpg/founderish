@@ -16,13 +16,18 @@ function slugify(s: string) {
 }
 
 export async function POST(req: Request) {
-  const parsed = Body.safeParse(await req.json());
-  if (!parsed.success) return Response.json({ error: parsed.error.issues }, { status: 400 });
+  const parsed = Body.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return Response.json({ error: parsed.error.issues[0]?.message ?? "invalid project" }, { status: 400 });
   const { repoUrl, description } = parsed.data;
 
-  const { owner, repo } = parseRepo(repoUrl);
+  let owner: string, repo: string;
+  try {
+    ({ owner, repo } = parseRepo(repoUrl));
+  } catch {
+    return Response.json({ error: "That isn't a GitHub repo. Use owner/name or a github.com URL." }, { status: 400 });
+  }
   const name = parsed.data.name ?? repo;
-  const slug = `${slugify(name)}-${Math.random().toString(36).slice(2, 6)}`;
+  const slug = `${slugify(name) || slugify(repo) || "project"}-${Math.random().toString(36).slice(2, 6)}`;
 
   const [project] = await db
     .insert(schema.projects)

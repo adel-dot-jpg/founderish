@@ -3,7 +3,6 @@ import { asc, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { currentProject } from "@/lib/dashboard";
 import { isDemoMode } from "@/lib/env";
-import { FindMoreButton } from "./find-more-button";
 import { ActionButton } from "../action-button";
 
 export default function PeoplePage(props: PageProps<"/people">) {
@@ -43,11 +42,11 @@ async function People({ searchParams }: PageProps<"/people">) {
   return (
     <>
       <div>
-        <ActionButton url={`/api/projects/${project.id}/find`} label="Find people now" busyLabel="Searching Apollo… (about 30s)" refreshAfterMs={30000} />
+        <ActionButton url={`/api/projects/${project.id}/find`} label="Find people now" busyLabel="Searching Apollo…" watchMs={60_000} />
       </div>
       {isDemoMode() && (
         <p className="rounded-md border border-amber-800 bg-amber-950/40 px-3 py-2 text-sm text-amber-200">
-          DEMO_MODE is on: people and titles are real Apollo results, but emails are swapped for your SEND_ALLOWLIST so nobody real is contacted and no Apollo credits are spent.
+          DEMO_MODE is on: people and titles are real Apollo results, but emails are swapped for addresses on your SEND_ALLOWLIST, so nobody real is contacted and no Apollo credits are spent.
         </p>
       )}
       {(["up", "down"] as const).map((dir) => (
@@ -71,7 +70,7 @@ async function People({ searchParams }: PageProps<"/people">) {
                         {f.person_locations?.length ? ` · ${f.person_locations.join(", ")}` : ""}
                       </p>
                     </div>
-                    <FindMoreButton projectId={project.id} audienceId={a.id} />
+                    <ActionButton url="/api/people/find" body={{ projectId: project.id, audienceId: a.id }} label="Find more" busyLabel="Searching Apollo…" small />
                   </div>
                   <table className="w-full text-left text-sm">
                     <tbody>

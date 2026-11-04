@@ -9,6 +9,7 @@ import { CopyButton } from "./copy-button";
 import { AddFactForm } from "./add-fact-form";
 import { SourceForm } from "./source-form";
 import { ActionButton } from "./action-button";
+import { LiveRefresh } from "./live-refresh";
 
 export default function Overview(props: PageProps<"/">) {
   return (
@@ -42,7 +43,7 @@ async function Dashboard({ searchParams }: PageProps<"/">) {
     );
   }
 
-  const [traffic, facts, events, outreach] = await Promise.all([
+  const [traffic, facts, events, [outreach], [pending]] = await Promise.all([
     trafficStats(project.id, 7),
     db.select().from(schema.facts).where(eq(schema.facts.projectId, project.id)).orderBy(desc(schema.facts.createdAt)),
     // Never pull file payloads (resume PDFs) into the feed.
@@ -60,26 +61,34 @@ async function Dashboard({ searchParams }: PageProps<"/">) {
       })
       .from(schema.contacts)
       .where(eq(schema.contacts.projectId, project.id)),
+    db
+      .select({ n: sql<number>`count(*)`.mapWith(Number) })
+      .from(schema.drafts)
+      .where(and(eq(schema.drafts.projectId, project.id), inArray(schema.drafts.status, ["pending", "flagged"]))),
   ]);
-  const pending = await db
-    .select({ n: sql<number>`count(*)`.mapWith(Number) })
-    .from(schema.drafts)
-    .where(and(eq(schema.drafts.projectId, project.id), inArray(schema.drafts.status, ["pending", "flagged"])));
+  // The repo is being read (just created, or "Re-read repo"): keep the page live so receipts appear as they land.
+  const latest = (...types: string[]) => events.find((e) => types.includes(e.type))?.createdAt.getTime() ?? 0;
+  const ingesting = latest("project_created", "ingest_requested") > latest("project_ingested", "ingest_failed");
 
   const snippet = `<script defer src="${appUrl()}/t.js" data-project="${project.slug}"></script>`;
   const signupCall = `window.founderish?.track("signup")`;
 
   return (
     <>
+      {ingesting && <LiveRefresh />}
       <section className="flex flex-col gap-2">
         <h1 className="font-mono text-3xl font-bold tracking-tight">{project.name}</h1>
-        {project.pitch && <p className="max-w-3xl text-lg text-zinc-300">{project.pitch}</p>}
+        {ingesting ? (
+          <p className="text-zinc-400">Reading the repo and writing down the receipts…</p>
+        ) : (
+          project.pitch && <p className="max-w-3xl text-lg text-zinc-300">{project.pitch}</p>
+        )}
         <p className="flex flex-wrap gap-4 text-sm text-zinc-500">
           {project.siteUrl && <a href={project.siteUrl} className="hover:text-white">{project.siteUrl.replace(/^https?:\/\//, "")}</a>}
           <a href={project.repoUrl} className="hover:text-white">{project.repoUrl.replace("https://github.com/", "github/")}</a>
           <Link href={`/p/${project.slug}`} className="hover:text-white">landing page</Link>
-          <ActionButton url={`/api/projects/${project.id}/find`} label="Find people now" busyLabel="Searching Apollo…" refreshAfterMs={30000} />
-          <ActionButton url={`/api/projects/${project.id}/ingest`} label="Re-read repo" busyLabel="Reading the repo…" refreshAfterMs={30000} />
+          <ActionButton url={`/api/projects/${project.id}/find`} label="Find people now" busyLabel="Searching Apollo…" watchMs={60_000} small />
+          <ActionButton url={`/api/projects/${project.id}/ingest`} label="Re-read repo" busyLabel="Reading the repo…" watchMs={60_000} small />
         </p>
       </section>
 
@@ -87,9 +96,9 @@ async function Dashboard({ searchParams }: PageProps<"/">) {
         <Stat label="Visitors · 7d" value={traffic.visitors} />
         <Stat label="Pageviews · 7d" value={traffic.pageviews} />
         <Stat label="App signups · 7d" value={traffic.signups} />
-        <Stat label="Emails sent" value={outreach[0].sent} />
-        <Stat label="Replies" value={outreach[0].replied} />
-        <Stat label="Waiting on you" value={pending[0].n} href="/approvals" accent={pending[0].n > 0} />
+        <Stat label="Emails sent" value={outreach.sent} />
+        <Stat label="Replies" value={outreach.replied} />
+        <Stat label="Waiting on you" value={pending.n} href="/approvals" accent={pending.n > 0} />
       </section>
 
       <section className="flex flex-col gap-3 rounded-lg border border-zinc-800 p-5">
@@ -161,6 +170,7 @@ function describe(e: { type: string; payload: Record<string, unknown> }): string
   switch (e.type) {
     case "project_created": return "Project created";
     case "project_ingested": return `Read the repo: ${p.facts} receipts found`;
+    case "ingest_failed": return `Couldn't read the repo: ${p.reason}`;
     case "audiences_generated": return `Picked ${(p.audiences as string[])?.length ?? 0} audiences to test`;
     case "people_found": return `Found ${p.found} people for “${p.audience}” (${p.new} new)`;
     case "people_search_requested": return p.audiences === 0 ? "Picking audiences from the receipts, then searching Apollo" : "Searching Apollo for more people";
@@ -171,6 +181,9 @@ function describe(e: { type: string; payload: Record<string, unknown> }): string
     case "draft_rejected": return "Draft rejected";
     case "email_sent": return `Email sent to ${p.to}`;
     case "send_blocked": return "Send blocked by DEMO_MODE";
+    case "send_failed": return `Couldn't send: ${p.reason}`;
+    case "reply_needs_human": return "A reply was flagged as risky and needs you to read it";
+    case "source_failed": return `Couldn't read ${p.label}: ${p.reason}`;
     case "link_click": return "Someone clicked a tracked link";
     case "signup": return "New waitlist signup";
     case "reply_received": return `${p.name} replied (${p.classification}): ${p.summary}`;

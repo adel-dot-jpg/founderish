@@ -3,8 +3,8 @@ import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { currentProject } from "@/lib/dashboard";
 import { DraftCard } from "./draft-card";
-import { SendBriefButton } from "./send-brief-button";
 import { ActionButton } from "../action-button";
+import { LiveRefresh } from "../live-refresh";
 
 export default function ApprovalsPage(props: PageProps<"/approvals">) {
   return (
@@ -13,7 +13,7 @@ export default function ApprovalsPage(props: PageProps<"/approvals">) {
         <h1 className="text-2xl font-semibold tracking-tight">Approvals</h1>
         <p className="text-sm text-zinc-500">Nothing goes out until you approve it. Every claim is backed by a receipt.</p>
         <p className="mt-1 text-sm text-zinc-400">
-          Approved emails go out from the coach inbox <span className="font-mono text-brand">{process.env.AGENTBOXD_INBOX ?? "on Agentboxd"}</span> (Agentboxd). Replies land there, get classified, and come back here as reply drafts.
+          Approved emails go out from the coach inbox{process.env.AGENTBOXD_INBOX ? <> <span className="font-mono text-brand">{process.env.AGENTBOXD_INBOX}</span></> : ""} on Agentboxd. Replies land there, get classified, and come back here as reply drafts.
         </p>
       </div>
       <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
@@ -54,9 +54,11 @@ async function Queue({ searchParams }: PageProps<"/approvals">) {
         </p>
         <div className="flex gap-2">
           <ActionButton url="/api/inbox" label="Check inbox now" busyLabel="Reading replies…" />
-          <SendBriefButton projectId={project.id} />
+          <ActionButton url="/api/brief" body={{ projectId: project.id }} label="Send brief now" busyLabel="Sending the brief…" watchMs={8000} />
         </div>
       </div>
+      {/* Drafts in the receipt check or about to send: keep the queue live until they settle. */}
+      {rows.some((r) => r.draft.status === "checking" || r.draft.status === "approved") && <LiveRefresh />}
       <div className="flex flex-col gap-4">
         {rows.map(({ draft, contact, audience }) => (
           <DraftCard
@@ -64,7 +66,7 @@ async function Queue({ searchParams }: PageProps<"/approvals">) {
             draft={{ id: draft.id, kind: draft.kind, status: draft.status, subject: draft.subject, body: draft.body, briefNumber: draft.briefNumber }}
             contact={contact && { name: contact.name, title: contact.title, company: contact.company, email: contact.email, score: contact.score, reason: contact.reason, direction: contact.direction }}
             audience={audience?.name ?? null}
-            facts={draft.factIds.map((id) => ({ id, text: factText[id] ?? "(fact removed)" }))}
+            facts={draft.factIds.map((id) => factText[id] ?? "(fact removed)")}
           />
         ))}
       </div>

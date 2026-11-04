@@ -1,4 +1,4 @@
-// pg-boss client + job contract (plan.md §5). Job names are shared across the team; don't rename them.
+// pg-boss client + job contract (plan.md §5). Job names are the contract between routes and worker handlers.
 import PgBoss from "pg-boss";
 import { db, schema, POOL_SAFETY } from "./db";
 import { databaseUrl } from "./env";
@@ -15,7 +15,6 @@ export const JOBS = {
   followupSchedule: "followup.schedule",
   mailInbound: "mail.inbound",
   postDraft: "post.draft",
-  nicheReport: "niche.report",
   briefSend: "brief.send",
   factsRefresh: "facts.refresh",
   sourceIngest: "source.ingest",
@@ -36,8 +35,7 @@ export type JobPayloads = {
   "followup.schedule": { contactId: string };
   "mail.inbound": { eventId: string }; // the raw inbound payload lives in events.payload
   "post.draft": { projectId: string; eventId?: string };
-  "niche.report": { projectId?: string };
-  "brief.send": { projectId?: string };
+  "brief.send": { projectId?: string }; // the brief covers every project; projectId is who asked
   "facts.refresh": { projectId?: string }; // live traffic/waitlist numbers -> facts (no projectId = all)
   "mail.poll": Record<string, never>; // one pass over the coach inbox
   "source.ingest": { eventId: string }; // website / resume PDF / pasted text -> facts; the input lives in events.payload
@@ -45,10 +43,16 @@ export type JobPayloads = {
 
 const g = globalThis as unknown as { __founderishBoss?: Promise<PgBoss> };
 
-export function getBoss(): Promise<PgBoss> {
+// The web app and scripts only send jobs, so their instance skips pg-boss maintenance and cron; the worker
+// passes { worker: true } (before anything else calls this) and runs both.
+export function getBoss({ worker = false } = {}): Promise<PgBoss> {
   g.__founderishBoss ??= (async () => {
     // pg-boss passes its config straight to pg.Pool, so the same half-open-socket protection applies.
-    const boss = new PgBoss({ connectionString: databaseUrl(), ...POOL_SAFETY } as PgBoss.ConstructorOptions);
+    const boss = new PgBoss({
+      connectionString: databaseUrl(),
+      ...POOL_SAFETY,
+      ...(worker ? {} : { supervise: false, schedule: false, max: 3 }),
+    } as PgBoss.ConstructorOptions);
     boss.on("error", (err) => console.error("[pg-boss]", err));
     await boss.start();
     // pg-boss v10 needs a queue to exist before send/work.

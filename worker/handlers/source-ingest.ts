@@ -14,9 +14,17 @@ export default async function handle({ eventId }: JobPayloads["source.ingest"]) 
   const src = event.payload as SourcePayload;
   const { project } = await loadProject(event.projectId);
 
-  let text = src.text;
-  if (src.kind === "website" && src.url) text = await fetchPageText(src.url);
   const label = src.url ?? src.filename ?? "pasted text";
+  let text = src.text;
+  if (src.kind === "website" && src.url) {
+    try {
+      text = await fetchPageText(src.url);
+    } catch (err) {
+      // A dead or blocked URL won't fix itself on retry: tell the owner in the activity feed instead.
+      await recordEvent(project.id, "source_failed", { label, reason: err instanceof Error ? err.message : String(err) });
+      return;
+    }
+  }
 
   const { facts } = await extractSourceFacts({
     kind: src.kind,
